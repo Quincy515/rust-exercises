@@ -1,0 +1,35 @@
+/// 泛型与枚举
+/// enum Option<T> {
+///     Some(T),
+///     None,
+/// }
+/// Option<T> 表示可能有值，也可能无值这一抽象概念。
+// Option 作为返回值类型
+fn option_add(x: Option<i32>, y: Option<i32>) -> Option<i32> {
+    return if x.is_none() && y.is_none() {
+        None
+    } else if x.is_none() {
+        y
+    } else if y.is_none() {
+        x
+    } else {
+        Some(x.unwrap() + y.unwrap())
+    };
+}
+
+fn option_print(opt: Option<i32>) {
+    match opt {
+        Some(result) => println!("Option:{}", result),
+        _ => println!("Option is None!"),
+    }
+}
+
+fn main() {
+    let result1 = option_add(Some(3), Some(5));
+    let result2 = option_add(Some(3), None);
+    let result3 = option_add(None, None);
+
+    option_print(result1); // Option: 8
+    option_print(result2); // Option: 5
+    option_print(result3); // Option is None!
+}
