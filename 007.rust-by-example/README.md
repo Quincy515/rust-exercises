@@ -2,3 +2,5 @@
 
 https://github.com/oussamarouabah/rust_by_example
 
+[shiyanlou](https://github.com/shiyanlou)/**[rust-by-example-cn](https://github.com/shiyanlou/rust-by-example-cn)**
+
