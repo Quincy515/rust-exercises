@@ -1,39 +1,25 @@
+use std::collections::HashMap;
+
 fn main() {
     // 小胖的一箱裤子
-    let mut xiaopang_box_trousers = vec![
-        String::from("1.##########"),
-        String::from("2.#########"),
-        String::from("3.########"),
-        String::from("4.###########"),
-        String::from("5.############"),
-    ];
-    // 新同事看裤子 只看裤子的凭证
-    new_colleague_look(&xiaopang_box_trousers[1..3]);
-    println!("请女朋友修改裤子");
-    girl_friend_change(&mut xiaopang_box_trousers[..3]);
-    println!("请妈妈修改裤子");
-    mother_change(&mut xiaopang_box_trousers[3..]);
-    let xiaopang_other_trousers = String::from("6.#######");
-    xiaopang_box_trousers.push(xiaopang_other_trousers);
-    println!("现在箱子里有{}条裤子", xiaopang_box_trousers.len());
-}
+    // 定义一个HashMap类型的箱子存放裤子
+    let mut xiaopang_box_trousers = HashMap::new();
+    // 使用品牌名称作为key，同品牌的裤子组成的Vector作为Value
+    xiaopang_box_trousers.insert(
+        "A",
+        vec![String::from("1.##########"), String::from("2.#########")],
+    );
+    xiaopang_box_trousers.insert(
+        "B",
+        vec![String::from("3.########"), String::from("4.#######")],
+    );
+    xiaopang_box_trousers.insert("C", vec![String::from("5.######")]);
 
-fn new_colleague_look(trousers_slice: &[String]) {
-    for trouser in trousers_slice.iter() {
-        println!("这裤子:{}真帅气!", trouser);
-    }
-}
-
-fn girl_friend_change(trousers_slice: &mut [String]) {
-    for trouser in trousers_slice.iter_mut() {
-        trouser.truncate(9);
-        println!("女朋友改好了裤子: {}", trouser);
-    }
-}
-
-fn mother_change(trousers_slice: &mut [String]) {
-    for trouser in trousers_slice.iter_mut() {
-        trouser.truncate(9);
-        println!("妈妈修改好了裤子: {}", trouser);
+    let brand = "B"; // 查找的品牌名称
+    println!("查找{}品牌的裤子", brand);
+    let trousers_opt = xiaopang_box_trousers.get(&brand);
+    match trousers_opt {
+        Some(trouser_vec) => println!("找到了品牌为{}的裤子{:?}", brand, trouser_vec),
+        None => println!("没有找到编号为{}的裤子", brand),
     }
 }
