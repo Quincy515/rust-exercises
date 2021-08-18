@@ -1,0 +1,12 @@
+[package]
+name = "ffi_fibonacci-10"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# build 生成后缀为.so的动态链接库
+[lib]
+crate-type = ["cdylib", "dylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.74"

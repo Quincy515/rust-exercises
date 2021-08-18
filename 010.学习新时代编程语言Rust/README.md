@@ -16,5 +16,7 @@
 | refactor-trousers-04          | [17重构裤子——面向对象之类型系统]([学习新时代编程语言Rust-17重构裤子——面向对象之类型系统_一个不安分的程序员-CSDN博客_rust 冒号问号](https://blog.csdn.net/tianlangstudio/article/details/102554477)) |
 | mod-05                        |                                                              |
 | procedural-macros-06          |                                                              |
-|                               |                                                              |
+| thread-07                     |                                                              |
+| actor-08                      |                                                              |
+| future-09                     |                                                              |
 
