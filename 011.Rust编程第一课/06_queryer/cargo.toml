@@ -3,5 +3,6 @@
 members = [
     "queryer",
     "queryer-py",
-    "queryer-js"
+    "queryer-js",
+    "queryer-node"
 ]
