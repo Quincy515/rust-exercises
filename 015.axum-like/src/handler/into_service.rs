@@ -35,8 +35,8 @@ impl<H, B, T> fmt::Debug for IntoService<H, B, T> {
 }
 
 impl<H, B, T> Clone for IntoService<H, B, T>
-    where
-        H: Clone,
+where
+    H: Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -47,9 +47,9 @@ impl<H, B, T> Clone for IntoService<H, B, T>
 }
 
 impl<H, T, B> Service<Request<B>> for IntoService<H, B, T>
-    where
-        H: Handler<B, T> + Clone + Send + 'static,
-        B: Send + 'static,
+where
+    H: Handler<B, T> + Clone + Send + 'static,
+    B: Send + 'static,
 {
     type Response = Response<BoxBody>;
     type Error = Infallible;

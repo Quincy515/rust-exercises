@@ -33,8 +33,8 @@ pin_project! {
 }
 
 impl<F, B> Future for OnMethodFuture<F, B>
-    where
-        F: Service<Request<B>, Response = Response<BoxBody>>,
+where
+    F: Service<Request<B>, Response = Response<BoxBody>>,
 {
     type Output = Result<Response<BoxBody>, F::Error>;
 
@@ -55,8 +55,8 @@ impl<F, B> Future for OnMethodFuture<F, B>
 }
 
 impl<F, B> fmt::Debug for OnMethodFuture<F, B>
-    where
-        F: Service<Request<B>>,
+where
+    F: Service<Request<B>>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OnMethodFuture").finish()

@@ -2,7 +2,7 @@ use bitflags::bitflags;
 use http::Method;
 
 bitflags! {
-    /// A filter that matches one or more HTTP mthods.
+    /// A filter that matches one or more HTTP methods.
     pub struct MethodFilter: u16 {
         /// Match `CONNECT` requests.
         const CONNECT = 0b000000001;

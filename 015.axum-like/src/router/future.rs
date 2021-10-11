@@ -20,16 +20,23 @@ use crate::BoxError;
 opaque_future! {
     /// Response future for [`EmptyRouter`](super::EmptyRouter)
     // 这个宏会生成 EmptyRouterFuture 结构体，并为这个结构体自动生成 future
-    pub type EmptyRouterFuture<E> = std::future::Ready<Result<Response<BoxBody>, E>>;
+    pub type EmptyRouterFuture<E> =
+        std::future::Ready<Result<Response<BoxBody>, E>>;
+}
+
+opaque_future! {
+    /// Response future from [`MakeRouteService`] services.
+    pub type MakeRouteServiceFuture<S> =
+        std::future::Ready<Result<S, Infallible>>;
 }
 
 pin_project! {
-    /// The response futures for [`Route`](super::Route).
+    /// The response future for [`Route`](super::Route).
     #[derive(Debug)]
     pub struct RouteFuture<S, F, B>
     where
         S: Service<Request<B>>,
-        F:Service<Request<B>>
+        F: Service<Request<B>>
     {
         #[pin]
         state: RouteFutureInner<S, F, B>,
@@ -37,16 +44,16 @@ pin_project! {
 }
 
 impl<S, F, B> RouteFuture<S, F, B>
-    where
-        S: Service<Request<B>>,
-        F: Service<Request<B>>,
+where
+    S: Service<Request<B>>,
+    F: Service<Request<B>>,
 {
     pub(crate) fn a(a: Oneshot<S, Request<B>>, fallback: F) -> Self {
         RouteFuture {
             state: RouteFutureInner::A {
                 a,
                 fallback: Some(fallback),
-            }
+            },
         }
     }
 
@@ -65,13 +72,11 @@ pin_project! {
         S: Service<Request<B>>,
         F: Service<Request<B>>,
     {
-        // A 是路由匹配的情况
         A {
             #[pin]
             a: Oneshot<S, Request<B>>,
             fallback: Option<F>,
         },
-        // B 是 fallback 的情况
         B {
             #[pin]
             b: Oneshot<F, Request<B>>
@@ -80,10 +85,10 @@ pin_project! {
 }
 
 impl<S, F, B> Future for RouteFuture<S, F, B>
-    where
-        S: Service<Request<B>, Response=Response<BoxBody>>,
-        F: Service<Request<B>, Response=Response<BoxBody>, Error=S::Error>,
-        B: Send + Sync + 'static,
+where
+    S: Service<Request<B>, Response = Response<BoxBody>>,
+    F: Service<Request<B>, Response = Response<BoxBody>, Error = S::Error>,
+    B: Send + Sync + 'static,
 {
     type Output = Result<Response<BoxBody>, S::Error>;
 
@@ -93,12 +98,11 @@ impl<S, F, B> Future for RouteFuture<S, F, B>
             let mut this = self.as_mut().project();
 
             let new_state = match this.state.as_mut().project() {
-                // A 的情况是路由匹配成功
                 RouteFutureInnerProj::A { a, fallback } => {
                     let mut response = ready!(a.poll(cx))?;
 
                     let req = if let Some(ext) =
-                    response.extensions_mut().remove::<FromEmptyRouter<B>>()
+                        response.extensions_mut().remove::<FromEmptyRouter<B>>()
                     {
                         ext.request
                     } else {

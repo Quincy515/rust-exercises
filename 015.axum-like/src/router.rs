@@ -1,7 +1,7 @@
 pub mod empty_router;
+pub mod route;
 pub mod future;
 pub mod method_filter;
-pub mod route;
 
 use std::{
     borrow::Cow,
@@ -20,7 +20,6 @@ use tower::{
     util::{BoxService, ServiceExt},
     ServiceBuilder,
 };
-
 use tower_http::map_response_body::MapResponseBodyLayer;
 use tower_layer::Layer;
 use tower_service::Service;
@@ -35,6 +34,7 @@ use self::{
 
 pub use self::method_filter::MethodFilter;
 
+#[derive(Debug, Clone)]
 pub struct Router<S> {
     // 代表 Service
     svc: S,
@@ -57,7 +57,8 @@ impl<E> Default for Router<EmptyRouter<E>> {
 
 // 为 Router 实现 Service
 impl<S, R> Service<R> for Router<S>
-    where S: Service<R>,
+    where
+        S: Service<R>,
 {
     type Response = S::Response;
     type Error = S::Error;
@@ -74,17 +75,59 @@ impl<S, R> Service<R> for Router<S>
     }
 }
 
-
 impl<S> Router<S> {
-    pub fn route<T>(self, path: &str, svc: T) -> Router<Route<T, S>> {
+    pub fn route<T>(self, description: &str, svc: T) -> Router<Route<T, S>> {
         self.map(|fallback| Route {
-            pattern: PathPattern::new(path),
+            pattern: PathPattern::new(description),
             svc,
             fallback,
         })
     }
 
-    fn map<F, S2>(self, f: F) -> Router<S2> where F: FnOnce(S) -> S2 {
+    fn map<F, S2>(self, f: F) -> Router<S2>
+        where
+            F: FnOnce(S) -> S2,
+    {
         Router { svc: f(self.svc) }
+    }
+
+    pub fn into_make_service(self) -> IntoMakeService<S>
+        where
+            S: Clone,
+    {
+        IntoMakeService::new(self.svc)
+    }
+}
+
+/// A [`MakeService`] that produces axum router services.
+///
+/// [`MakeService`]: tower::make::MakeService
+#[derive(Debug, Clone)]
+pub struct IntoMakeService<S> {
+    service: S,
+}
+
+impl<S> IntoMakeService<S> {
+    fn new(service: S) -> Self {
+        Self { service }
+    }
+}
+
+impl<S, T> Service<T> for IntoMakeService<S>
+    where
+        S: Clone,
+{
+    type Response = S;
+    type Error = Infallible;
+    type Future = future::MakeRouteServiceFuture<S>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, _target: T) -> Self::Future {
+        future::MakeRouteServiceFuture {
+            future: ready(Ok(self.service.clone())),
+        }
     }
 }

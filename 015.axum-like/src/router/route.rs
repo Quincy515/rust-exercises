@@ -4,11 +4,23 @@ use bytes::Bytes;
 use regex::Regex;
 use crate::util::ByteStr;
 
+#[derive(Debug, Clone)]
+pub(crate) struct PathPattern(Arc<Inner>);
 
+#[derive(Debug)]
+struct Inner {
+    // 全路径
+    full_path_regex: Regex,
+    // 动态路由 /users/:id/profile
+    capture_group_names: Box<[Bytes]>,
+}
+
+// 路由匹配： 基于 service
+#[derive(Debug, Clone)]
 pub struct Route<S, F> {
     pub(crate) pattern: PathPattern,
-    pub(crate) svc: S,
-    pub(crate) fallback: F, // 回退机制，比如回退到 404，或者支持 SPA 应用
+    pub(crate) svc: S,      // service
+    pub(crate) fallback: F, // 回退机制，比如回退到 404，或者支持 SPA应用
 }
 
 // S 代表 Service F 代表 fallback B 代表 Body
@@ -27,7 +39,7 @@ impl<S, F, B> Service<Request<B>> for Route<S, F>
     }
 
     fn call(&mut self, mut req: Request<B>) -> Self::Future {
-        if let Some(captures) = self.pattern.full_match((&req)) {
+        if let Some(captures) = self.pattern.full_match(&req) {
             insert_url_params(&mut req, captures);
             let fut = self.svc.clone().oneshot(req);
             RouteFuture::a(fut, self.fallback.clone())
@@ -57,16 +69,6 @@ fn insert_url_params<B>(req: &mut Request<B>, params: Vec<(String, String)>) {
     }
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct PathPattern(Arc<Inner>);
-
-#[derive(Debug)]
-struct Inner {
-    // 全路径
-    full_path_regex: Regex,
-    // 动态路由 /users/:id/profile
-    capture_group_names: Box<[Bytes]>,
-}
 
 impl PathPattern {
     pub(crate) fn new(pattern: &str) -> Self {
@@ -79,8 +81,7 @@ impl PathPattern {
             .split('/')
             .map(|part| {
                 if let Some(key) = part.strip_prefix(':') {
-                    capture_group_names.push(
-                        Bytes::copy_from_slice(key.as_bytes()));
+                    capture_group_names.push(Bytes::copy_from_slice(key.as_bytes()));
 
                     Cow::Owned(format!("(?P<{}>[^/]+)", key))
                 } else {
@@ -90,13 +91,15 @@ impl PathPattern {
             .collect::<Vec<_>>()
             .join("/");
 
-        let full_path_regex = Regex::new(&format!("^{}", pattern)).expect("invalid regex generated from route");
+        let full_path_regex =
+            Regex::new(&format!("^{}", pattern)).expect("invalid regex generated from route");
 
         Self(Arc::new(Inner {
             full_path_regex,
             capture_group_names: capture_group_names.into(),
         }))
     }
+
     pub(crate) fn full_match<B>(&self, req: &Request<B>) -> Option<Captures> {
         self.do_match(req).and_then(|match_| {
             if match_.full_match {
