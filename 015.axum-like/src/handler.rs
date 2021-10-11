@@ -71,42 +71,13 @@ pub trait Handler<B, T>: Clone + Send + Sized + 'static {
     type Sealed: sealed::HiddentTrait;
 
     async fn call(self, req: Request<B>) -> Response<BoxBody>;
-
-
-
-    // /// Convert the handler into a [`Service`].
-    // ///
-    // /// This allows you to serve a single handler if you don't need any routing:
-    // ///
-    // /// ```rust
-    // /// use axum::{
-    // ///     Server, handler::Handler, http::{Uri, Method}, response::IntoResponse,
-    // /// };
-    // /// use tower::make::Shared;
-    // /// use std::net::SocketAddr;
-    // ///
-    // /// async fn handler(method: Method, uri: Uri, body: String) -> impl IntoResponse {
-    // ///     format!("received `{} {}` with body `{:?}`", method, uri, body)
-    // /// }
-    // ///
-    // /// let service = handler.into_service();
-    // ///
-    // /// # async {
-    // /// Server::bind(&SocketAddr::from(([127, 0, 0, 1], 3000)))
-    // ///     .serve(Shared::new(service))
-    // ///     .await?;
-    // /// # Ok::<_, hyper::Error>(())
-    // /// # };
-    // /// ```
-    // fn into_service(self) -> IntoService<Self, B, T> {
-    //     IntoService::new(self)
-    // }
 }
 
+// 为函数指针实现 handler trait
 #[async_trait]
 impl<F, Fut, Res, B> Handler<B, ()> for F
 where
-    F: FnOnce() -> Fut + Clone + Send + Sync + 'static,
+    F: FnOnce() -> Fut + Clone + Send + Sync + 'static, // 闭包的构造和函数指针是通用的
     Fut: Future<Output = Res> + Send,
     Res: IntoResponse,
     B: Send + 'static,
@@ -142,10 +113,6 @@ where
 }
 
 impl<H, B, T, F> OnMethod<H, B, T, F> {
-    /// Chain an additional handler that will accept all requests regardless of
-    /// its HTTP method.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn any<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -153,9 +120,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::all(), handler)
     }
 
-    /// Chain an additional handler that will only accept `CONNECT` requests.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn connect<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -163,9 +127,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::CONNECT, handler)
     }
 
-    /// Chain an additional handler that will only accept `DELETE` requests.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn delete<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -173,28 +134,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::DELETE, handler)
     }
 
-    /// Chain an additional handler that will only accept `GET` requests.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use axum::{handler::post, Router};
-    ///
-    /// async fn handler() {}
-    ///
-    /// async fn other_handler() {}
-    ///
-    /// // Requests to `GET /` will go to `handler` and `POST /` will go to
-    /// // `other_handler`.
-    /// let app = Router::new().route("/", post(handler).get(other_handler));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
-    ///
-    /// Note that `get` routes will also be called for `HEAD` requests but will have
-    /// the response body removed. Make sure to add explicit `HEAD` routes
-    /// afterwards.
     pub fn get<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -202,9 +141,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::GET | MethodFilter::HEAD, handler)
     }
 
-    /// Chain an additional handler that will only accept `HEAD` requests.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn head<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -212,9 +148,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::HEAD, handler)
     }
 
-    /// Chain an additional handler that will only accept `OPTIONS` requests.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn options<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -222,9 +155,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::OPTIONS, handler)
     }
 
-    /// Chain an additional handler that will only accept `PATCH` requests.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn patch<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -232,9 +162,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::PATCH, handler)
     }
 
-    /// Chain an additional handler that will only accept `POST` requests.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn post<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -242,9 +169,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::POST, handler)
     }
 
-    /// Chain an additional handler that will only accept `PUT` requests.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn put<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -252,9 +176,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::PUT, handler)
     }
 
-    /// Chain an additional handler that will only accept `TRACE` requests.
-    ///
-    /// See [`OnMethod::get`] for an example.
     pub fn trace<H2, T2>(self, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,
@@ -262,29 +183,6 @@ impl<H, B, T, F> OnMethod<H, B, T, F> {
         self.on(MethodFilter::TRACE, handler)
     }
 
-    /// Chain an additional handler that will accept requests matching the given
-    /// `MethodFilter`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use axum::{
-    ///     handler::get,
-    ///     Router,
-    ///     routing::MethodFilter
-    /// };
-    ///
-    /// async fn handler() {}
-    ///
-    /// async fn other_handler() {}
-    ///
-    /// // Requests to `GET /` will go to `handler` and `DELETE /` will go to
-    /// // `other_handler`
-    /// let app = Router::new().route("/", get(handler).on(MethodFilter::DELETE, other_handler));
-    /// # async {
-    /// # axum::Server::bind(&"".parse().unwrap()).serve(app.into_make_service()).await.unwrap();
-    /// # };
-    /// ```
     pub fn on<H2, T2>(self, method: MethodFilter, handler: H2) -> OnMethod<H2, B, T2, Self>
     where
         H2: Handler<B, T2>,

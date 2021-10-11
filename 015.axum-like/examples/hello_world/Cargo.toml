@@ -8,3 +8,6 @@ edition = "2018"
 [dependencies]
 axumlike = { path = "../.." }
 tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = "0.2" # 日志
+color-eyre = "0.5"

@@ -99,9 +99,6 @@ impl<S> Router<S> {
     }
 }
 
-/// A [`MakeService`] that produces axum router services.
-///
-/// [`MakeService`]: tower::make::MakeService
 #[derive(Debug, Clone)]
 pub struct IntoMakeService<S> {
     service: S,
