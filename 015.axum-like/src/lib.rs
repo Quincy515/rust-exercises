@@ -9,9 +9,11 @@ mod macros;
 pub mod router;
 mod body;
 mod error;
-mod util;
+pub mod util;
 pub mod handler;
-mod response;
+pub mod response;
+pub mod extract;
+pub mod service;
 
 pub use self::router::Router;
 

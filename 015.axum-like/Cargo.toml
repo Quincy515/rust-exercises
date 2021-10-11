@@ -27,3 +27,4 @@ tower = { version = "0.4", default-features = false, features = ["util","buffer"
 tower-service = "0.3"
 tower-layer = "0.3"
 tower-http = { version = "0.1", features = ["add-extension", "map-response-body"] }
+headers = "0.3.4"

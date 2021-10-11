@@ -23,11 +23,19 @@ use color_eyre::Report;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
+mod handlers;
+use crate::handlers::{handler, page_handler};
+
 #[tokio::main]
 async fn main() -> Result<(), Report> {
     setup()?;
     // build our application with a route
-    let app = Router::new().route("/", get(hello));
+    let app = Router::new()
+        .route("/", get(hello))
+        .route("/handler", get(handler))
+        // curl http://127.0.0.1:3000/page?page=2&per_page=30
+        .route("/page", get(page_handler));
+
 
     // run it
     let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
