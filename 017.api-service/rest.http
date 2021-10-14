@@ -1,0 +1,11 @@
+### GET
+GET http://localhost:3000 HTTP/1.1
+content-type:	text/plain
+
+### POST
+POST http://localhost:3000/api/create_shortlink
+content-type: application/json
+
+{
+    "url": "custer.fun"
+}
