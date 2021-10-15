@@ -133,3 +133,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 ```
+
+运行
+
+```shell
+cargo run --quiet -- "Re[^\\s]+" src/*.rs  
+```
