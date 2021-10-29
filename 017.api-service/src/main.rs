@@ -1,8 +1,8 @@
 use std::error::Error;
 use std::net::SocketAddr;
 
-mod config;
 mod app;
+mod config;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
