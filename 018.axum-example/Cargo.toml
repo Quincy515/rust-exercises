@@ -1,0 +1,39 @@
+[package]
+name = "axum_example"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1" # 错误处理
+thiserror = "1" # 错误定义和处理
+colored = "2" # 命令终端多彩显示
+itertools = "0.10" # 扩展迭代工具
+dashmap = "4" # 并发的 HashMap
+regex = "1" # 正则表达式
+tokio = { version = "1", features = ["full"] } # 异步处理
+tracing = "0.1" # 日志处理
+tracing-subscriber = "0.2" # 日志和追踪
+async-trait = "0.1" # 允许 trait 里有 async fn
+
+futures = "0.3" # 提供 Stream trait
+base64 = "0.13" # base64 编码/解码
+lazy_static = "1" # 通过宏更方便地初始化静态变量
+jsonwebtoken = "7.2"
+uuid = { version = "0.8", features = ["serde", "v4"] }
+chrono = { version = "^0.4", features = ["serde"]}
+
+serde = { version = "1", features = ["derive"] } # 序列化/反序列化数据
+serde_derive = "1.0"
+serde_json = "1.0"
+derive_more = "0.99"
+
+
+diesel = { version = "1.4", features = ["mysql", "r2d2", "serde_json", "extras", "chrono"] }
+dotenv = "0.15"
+r2d2 = "0.8"
+
+axum = { version = "0.2" }
+tower = { version = "0.4", features = ["util", "timeout"] }
+tower-http = { version = "0.1", features = ["add-extension", "trace"] }
