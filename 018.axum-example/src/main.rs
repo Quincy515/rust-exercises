@@ -8,6 +8,10 @@ use dotenv::dotenv;
 mod config;
 mod app;
 mod schema;
+mod util;
+mod error;
+
+pub use error::WebError;
 
 #[tokio::main]
 async fn main(){

@@ -13,6 +13,7 @@ use crate::{
         response::user::LoginResponse,
     },
     config::databases::Pool,
+    util::validate::validate_payload,
 };
 
 pub async fn login(
@@ -20,7 +21,11 @@ pub async fn login(
     Extension(_pool): Extension<Pool>,
 ) -> impl IntoResponse {
     println!("{:#?}", req);
-    (StatusCode::OK, "登录")
+    match validate_payload(&req) {
+        Ok(_) => (),
+        Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()),
+    };
+    (StatusCode::OK, "login success".to_string())
 }
 
 pub async fn register(

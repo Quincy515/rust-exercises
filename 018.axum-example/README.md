@@ -14,3 +14,9 @@
 - [SakaDream/actix-web-rest-api-with-jwt](https://github.com/SakaDream/actix-web-rest-api-with-jwt)
 - [auth0-blog/actix-diesel-auth](https://github.com/auth0-blog/actix-diesel-auth)
 - [svenstaro/rust-web-boilerplate](https://github.com/svenstaro/rust-web-boilerplate)
+
+`#[validate(required)]`
+
+- [JavaHello/rust-web-example](https://github.com/JavaHello/rust-web-example)
+- [ericpubu/aoc-2020](https://github.com/ericpubu/aoc-2020)
+- [beemstream/profile-service](https://github.com/beemstream/profile-service)
