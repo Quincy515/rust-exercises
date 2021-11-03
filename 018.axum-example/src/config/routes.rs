@@ -1,20 +1,34 @@
-use axum::handler::get;
-use axum::{AddExtensionLayer, Router};
-use axum::routing::BoxRoute;
+use axum::{
+    routing::{get, post},
+    AddExtensionLayer,
+    Router,
+    handler::Handler,
+    http::{StatusCode, Uri},
+    response::{IntoResponse},
+};
+use crate::{
+    app::api::user::user_auth::{
+        login,
+        register,
+    },
+    config::databases::Pool,
+};
 
-use crate::config::databases::Pool;
-
-pub fn app(pool: Pool) -> Router<BoxRoute>{
+pub fn app(pool: Pool) -> Router {
     Router::new()
-        .route("/", get(|| async {"Welcome to use axum"}))
+        .route("/", get(|| async { "Welcome to use axum" }))
         .nest("/api", api())
         .layer(AddExtensionLayer::new(pool))
         .layer(tower_http::trace::TraceLayer::new_for_http())
-        .boxed()
+        .fallback(fallback.into_service())
 }
 
-pub fn api() -> Router<BoxRoute>{
+pub fn api() -> Router {
     Router::new()
-        .route("/not_found", get(|| async {"not found"}))
-        .boxed()
+        .route("/login", post(login))
+        .route("/register", post(register))
+}
+
+async fn fallback(uri: Uri) -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, format!("No route for {}", uri))
 }

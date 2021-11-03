@@ -1,0 +1,22 @@
+### 登录
+POST http://localhost:8080/api/login
+Content-Type: application/json
+
+{
+  "username": "123",
+  "password": "333"
+}
+
+### 注册
+POST http://localhost:8080/api/register
+Content-Type: application/json
+
+{
+  "username": "123",
+  "password": "333",
+  "email": "",
+  "phone": "",
+  "nick_name": "",
+  "head_img": "",
+  "authority_id": ""
+}
