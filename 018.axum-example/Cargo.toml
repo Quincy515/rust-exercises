@@ -23,7 +23,6 @@ lazy_static = "1" # 通过宏更方便地初始化静态变量
 jsonwebtoken = "7.2"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 validator = { version = "0.14", features = ["derive"] }
-chrono = { version = "^0.4", features = ["serde"]}
 
 serde = { version = "1", features = ["derive"] } # 序列化/反序列化数据
 serde_derive = "1.0"
@@ -31,8 +30,8 @@ serde_json = "1.0"
 derive_more = "0.99"
 
 
-#diesel = { version = "1.4", features = ["mysql", "r2d2", "serde_json", "extras", "chrono"] }
-diesel = { version = "1.4", features = ["mysql", "r2d2"] }
+diesel = { version = "1.4", features = ["mysql", "r2d2", "serde_json", "extras", "chrono"] }
+chrono = { version = "0.4", features = ["serde"]}
 dotenv = "0.15"
 r2d2 = "0.8"
 

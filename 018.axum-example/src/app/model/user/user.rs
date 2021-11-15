@@ -1,16 +1,17 @@
-use serde::{Serialize, Deserialize};
+use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, diesel::Queryable)]
+#[derive(Debug, Default, Serialize, Deserialize, Queryable)]
 pub struct User {
-    pub id: i32,
-    pub created_at: chrono::NaiveDateTime,
-    pub updated_at: chrono::NaiveDateTime,
-    pub uuid: String,
-    pub username: String,
-    pub password: String,
-    pub nick_name: String,
-    pub email: String,
-    pub phone: String,
-    pub head_img: String,
-    pub authority_id: String,
+    pub id: u64,
+    pub uuid: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub nick_name: Option<String>,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub head_img: Option<String>,
+    pub authority_id: Option<String>,
+    pub created_at: Option<NaiveDateTime>,
+    pub updated_at: Option<NaiveDateTime>,
 }

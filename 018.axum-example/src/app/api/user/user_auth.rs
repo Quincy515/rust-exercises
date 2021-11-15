@@ -1,20 +1,16 @@
-use axum::{
-    extract::Extension,
-    Json,
-    response::{IntoResponse},
-    http::StatusCode,
-};
 use crate::{
-    app::model::user::{
-        request::user::{
-            UserLogin,
-            UserRegister,
+    app::{
+        model::user::{
+            request::user::{UserLogin, UserRegister},
+            response::user::LoginResponse,
+            user::User,
         },
-        response::user::LoginResponse,
+        service::user::user_auth::UserService,
     },
     config::databases::Pool,
     util::validate::validate_payload,
 };
+use axum::{extract::Extension, http::StatusCode, response::IntoResponse, Json};
 
 pub async fn login(
     Json(req): Json<UserLogin>,
@@ -22,10 +18,14 @@ pub async fn login(
 ) -> impl IntoResponse {
     println!("{:#?}", req);
     match validate_payload(&req) {
-        Ok(_) => (),
-        Err(e) => return (StatusCode::BAD_REQUEST, e.to_string()),
+        Ok(_) => {
+            let user = UserService::find_username(&_pool, req.username.unwrap().as_str());
+            return (StatusCode::OK, Json(user.unwrap()));
+        }
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, Json(User::default()));
+        }
     };
-    (StatusCode::OK, "login success".to_string())
 }
 
 pub async fn register(
@@ -33,5 +33,9 @@ pub async fn register(
     Extension(_pool): Extension<Pool>,
 ) -> impl IntoResponse {
     println!("{:#?}", req);
-    (StatusCode::OK, "注册22")
+    if let Some(_) = validate_payload(&req).ok() {
+        let user = UserService::create(&_pool, req);
+        return (StatusCode::OK, Json(user.unwrap()));
+    }
+    (StatusCode::OK, Json(User::default()))
 }

@@ -1,8 +1,6 @@
 table! {
     users (id) {
-        id -> Int4,
-        created_at -> Timestamp,
-        updated_at -> Timestamp,
+        id -> Unsigned<Bigint>,
         uuid -> Nullable<Varchar>,
         username -> Nullable<Varchar>,
         password -> Nullable<Varchar>,
@@ -11,5 +9,7 @@ table! {
         nick_name -> Nullable<Varchar>,
         head_img -> Nullable<Varchar>,
         authority_id -> Nullable<Varchar>,
+        created_at -> Nullable<Datetime>,
+        updated_at -> Nullable<Datetime>,
     }
 }
