@@ -1,17 +1,16 @@
-use axum::{
-    routing::{get, post},
-    AddExtensionLayer,
-    Router,
-    handler::Handler,
-    http::{StatusCode, Uri},
-    response::{IntoResponse},
-};
 use crate::{
-    app::api::user::user_auth::{
-        login,
-        register,
+    app::api::{
+        system::sys_captcha::captcha,
+        user::user_auth::{login, register},
     },
     config::databases::Pool,
+};
+use axum::{
+    handler::Handler,
+    http::{StatusCode, Uri},
+    response::IntoResponse,
+    routing::{get, post},
+    AddExtensionLayer, Router,
 };
 
 pub fn app(pool: Pool) -> Router {
@@ -27,6 +26,7 @@ pub fn api() -> Router {
     Router::new()
         .route("/login", post(login))
         .route("/register", post(register))
+        .route("/captcha", post(captcha))
 }
 
 async fn fallback(uri: Uri) -> impl IntoResponse {

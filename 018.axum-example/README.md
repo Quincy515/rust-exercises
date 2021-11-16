@@ -1,3 +1,7 @@
+```bash
+cargo watch -q -c -w src/ -x run
+```
+
 - https://github.com/dwisulfahnur/actix-graphql-demo
 - https://github.com/dwisulfahnur/actix-todoApp
 
