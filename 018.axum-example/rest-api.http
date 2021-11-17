@@ -1,5 +1,5 @@
 ### 获取验证码
-POST http://localhost:8080/api/captcha
+POST http://localhost:8088/api/captcha
 
 
 ### 登录

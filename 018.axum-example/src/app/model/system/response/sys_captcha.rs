@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Default, Debug, Serialize)]
 pub struct SysCaptchaResponse {

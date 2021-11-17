@@ -8,14 +8,15 @@ version = "0.1.0"
 [dependencies]
 anyhow = "1" # 错误处理
 async-trait = "0.1" # 允许 trait 里有 async fn
+clap = "3.0.0-beta.5" # 命令行解析
 colored = "2" # 命令终端多彩显示
 dashmap = "4" # 并发的 HashMap
 itertools = "0.10" # 扩展迭代工具
 regex = "1" # 正则表达式
 thiserror = "1" # 错误定义和处理
-tokio = {version = "1", features = ["full"]}# 异步处理  
+tokio = {version = "1", features = ["full"]}# 异步处理     
 tracing = "0.1" # 日志处理
-tracing-subscriber = "0.2" # 日志和追踪
+tracing-subscriber = "0.3" # 日志和追踪
 
 base64 = "0.13" # base64 编码/解码
 futures = "0.3" # 提供 Stream trait
@@ -39,3 +40,4 @@ tower = {version = "0.4", features = ["util", "timeout"]}
 tower-http = {version = "0.1", features = ["add-extension", "trace"]}
 
 captcha = "0.0.8" # 验证码
+md5 = "0.7.0" # 加密

@@ -1,29 +1,29 @@
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate lazy_static;
 
-use std::env;
 use std::net::SocketAddr;
-use dotenv::dotenv;
 
-mod config;
 mod app;
+mod config;
+mod error;
 mod schema;
 mod util;
-mod error;
 
+use clap::Parser;
 pub use error::WebError;
+use tracing::info;
 
 #[tokio::main]
-async fn main(){
-    dotenv().ok();
-    tracing_subscriber::fmt::init();
+async fn main() {
+    dotenv::dotenv().ok();
+    tracing_subscriber::fmt().init();
 
-    let port = env::var("PORT")
-        .expect("server port must be set");
-    let port = port.parse::<u16>().unwrap();
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let config = config::env::ServerConfig::parse();
+    let addr = SocketAddr::from((config.host, config.port));
     let pool = config::databases::get_db_pool();
-    println!("Start listening on {:?}", addr);
+    info!("Start listening on {:?}", addr);
 
     axum::Server::bind(&addr)
         .serve(config::routes::app(pool).into_make_service())
