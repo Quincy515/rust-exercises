@@ -1,6 +1,14 @@
 ### 获取验证码
 POST http://localhost:8088/api/captcha
 
+### 管理端登录
+POST http://localhost:8088/base/login
+Content-Type: application/json
+
+{
+  "username": "123",
+  "password": "323"
+}
 
 ### 登录
 POST http://localhost:8080/api/login

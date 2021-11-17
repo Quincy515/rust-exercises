@@ -10,6 +10,7 @@ use crate::{
     config::{self, databases::Pool},
 };
 
+// 生成验证码
 pub async fn captcha(Extension(_pool): Extension<Pool>) -> Json<Value> {
     let config = config::env::CaptchaConfig::parse();
 

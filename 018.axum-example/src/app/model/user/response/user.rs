@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 pub struct UserResponse {
     pub id: i32,
     pub uuid: String,
@@ -11,9 +11,9 @@ pub struct UserResponse {
     pub authority_id: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct LoginResponse {
-    pub username: String,
-    pub token: String,
-    pub expires_at: String,
+    pub username: Option<String>,
+    pub token: Option<String>,
+    pub expires_at: Option<String>,
 }

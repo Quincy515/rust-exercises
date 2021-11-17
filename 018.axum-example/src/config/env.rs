@@ -25,3 +25,16 @@ pub struct CaptchaConfig {
     #[clap(default_value = "0.5", env = "CAPTCHA_NOISE")]
     pub noise: f32,
 }
+
+
+#[derive(Debug, Parser)]
+pub struct JwtConfig {
+    #[clap(default_value = "qmPlus", env = "SIGNING_KEY")]
+    pub signing_key: String,
+    #[clap(default_value = "604800", env = "EXPIRES_TIME")]
+    pub expires_time: i64,
+    #[clap(default_value = "86400", env = "BUFFER_TIME")]
+    pub buffer_time: i64,
+    #[clap(default_value = "qmPlus", env = "ISSUER")]
+    pub issuer: String,
+}

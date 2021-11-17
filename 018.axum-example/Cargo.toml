@@ -14,14 +14,16 @@ dashmap = "4" # 并发的 HashMap
 itertools = "0.10" # 扩展迭代工具
 regex = "1" # 正则表达式
 thiserror = "1" # 错误定义和处理
-tokio = {version = "1", features = ["full"]}# 异步处理     
+tokio = {version = "1", features = ["full"]}# 异步处理       
 tracing = "0.1" # 日志处理
 tracing-subscriber = "0.3" # 日志和追踪
 
 base64 = "0.13" # base64 编码/解码
+bcrypt = "0.10" # 加密
 futures = "0.3" # 提供 Stream trait
 jsonwebtoken = "7.2" 
 lazy_static = "1" # 通过宏更方便地初始化静态变量
+rayon = "1.5" 
 uuid = {version = "0.8", features = ["serde", "v4"]} 
 validator = {version = "0.14", features = ["derive"]} 
 

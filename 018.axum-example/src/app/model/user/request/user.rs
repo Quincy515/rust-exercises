@@ -31,6 +31,8 @@ pub struct UserLogin {
     pub username: Option<String>,
     #[validate(required, length(min = 3, message = "密码错误"))]
     pub password: Option<String>,
+    pub captcha: Option<String>,
+    pub captcha_id: Option<String>,
 }
 
 fn validate_unique_username(username: &str) -> Result<(), ValidationError> {

@@ -1,5 +1,7 @@
-use validator::{Validate, ValidationErrors};
+use validator::Validate;
 
-pub fn validate_payload<T: Validate>(payload: &T) -> Result<(), ValidationErrors> {
+use crate::error::Result;
+
+pub fn validate_payload<T: Validate>(payload: &T) -> Result<()> {
     Ok(payload.validate()?)
 }
