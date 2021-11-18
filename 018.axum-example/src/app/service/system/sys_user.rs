@@ -13,11 +13,9 @@ impl UserService {
     pub async fn login(input: UserLogin, pool: &Pool) -> Result<User> {
         let conn = pool.get().unwrap();
         let user = users
-            .filter(username.eq(input.username))
+            .filter(username.eq(input.username.unwrap()))
             .get_result::<User>(&conn)?;
-        if encryption::verify_password(input.password.unwrap(), user.password.to_owned().unwrap())
-            .await?
-        {
+        if encryption::verify_password(input.password.unwrap(), user.password.to_owned()).await? {
             Ok(user)
         } else {
             Err(WebError::WrongCredentials)

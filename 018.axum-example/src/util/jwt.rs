@@ -28,11 +28,12 @@ impl Claims {
     }
 }
 
-pub fn sign(id: Uuid) -> Result<String> {
+pub fn sign(id: String) -> Result<String> {
+    let uuid = Uuid::parse_str(&id)?;
     let config = config::env::JwtConfig::parse();
     Ok(jsonwebtoken::encode(
         &Header::default(),
-        &Claims::new(id, config.expires_time),
+        &Claims::new(uuid, config.expires_time),
         &EncodingKey::from_secret(config.signing_key.as_bytes()),
     )?)
 }

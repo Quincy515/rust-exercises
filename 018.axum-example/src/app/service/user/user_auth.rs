@@ -9,7 +9,7 @@ use diesel::prelude::*;
 pub struct UserService;
 
 impl UserService {
-    pub fn find(pool: &Pool, uid: u64) -> QueryResult<User> {
+    pub fn find(pool: &Pool, uid: i32) -> QueryResult<User> {
         let conn = pool.get().unwrap();
         users.filter(id.eq(uid)).get_result::<User>(&conn)
     }
@@ -26,7 +26,7 @@ impl UserService {
         Self::find(pool, last_id)
     }
 
-    pub fn last_id(pool: &Pool) -> QueryResult<u64> {
+    pub fn last_id(pool: &Pool) -> QueryResult<i32> {
         let conn = pool.get().unwrap();
         users.select(id).order(id.desc()).first(&conn)
     }

@@ -8,6 +8,8 @@ pub enum WebError {
     #[error(transparent)]
     BcryptError(#[from] bcrypt::BcryptError),
     #[error(transparent)]
+    UuidError(#[from] uuid::Error),
+    #[error(transparent)]
     DieselError(#[from] diesel::result::Error),
     #[error(transparent)]
     JwtError(#[from] jsonwebtoken::errors::Error),

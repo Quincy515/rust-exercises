@@ -23,7 +23,7 @@ pub async fn login(
     let user = UserService::login(req, &_pool)
         .await
         .map_err(|_| WebError::WrongCredentials)?;
-    let token = jwt::sign(user.uuid.unwrap())?;
+    let token = jwt::sign(user.uuid)?;
     let res = Response::<LoginResponse>::ok_with_msg("Login Successful".to_string());
     Ok(Json(json!(res)))
 }

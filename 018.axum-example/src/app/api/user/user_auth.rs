@@ -2,7 +2,6 @@ use crate::{
     app::{
         model::user::{
             request::user::{UserLogin, UserRegister},
-            response::user::LoginResponse,
             user::User,
         },
         service::user::user_auth::UserService,
@@ -23,7 +22,7 @@ pub async fn login(
             return (StatusCode::OK, Json(user.unwrap()));
         }
         Err(_) => {
-            return (StatusCode::BAD_REQUEST, Json(User::default()));
+            return (StatusCode::OK, Json(User::new()));
         }
     };
 }
@@ -37,5 +36,5 @@ pub async fn register(
         let user = UserService::create(&_pool, req);
         return (StatusCode::OK, Json(user.unwrap()));
     }
-    (StatusCode::OK, Json(User::default()))
+    (StatusCode::OK, Json(User::new()))
 }
