@@ -1,11 +1,8 @@
 [package]
-name = "advent-of-code-2021"
+name = "day04a"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[workspace]
-members = ["day01a", "day01b", "day02a", "day02b", "day03a", "day03b", "day04a", "day04b", "day05a", "day05b"]
 
 [dependencies]
