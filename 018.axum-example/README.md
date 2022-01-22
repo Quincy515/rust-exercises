@@ -6,9 +6,10 @@ cargo watch -q -c -w src/ -x run
 - https://github.com/dwisulfahnur/actix-todoApp
 
 [GraphQL] 构建 Rust 异步 GraphQL 服务：基于 tide + async-graphql + mongodb
-- [（1）- 起步及 crate 选择](https://blog.budshome.com/budshome/gou-jian-rust-yi-bu-graphql-fu-wu-:ji-yu-tide-+-async-graphql-+-mongodb(1)--qi-bu-ji-crate-xuan-ze)
-- [（2）- 查询服务](https://blog.budshome.com/budshome/gou-jian-rust-yi-bu-graphql-fu-wu-:ji-yu-tide-+-async-graphql-+-mongodb(2)--cha-xun-fu-wu)
-- [（3）- 重构](https://blog.budshome.com/budshome/gou-jian-rust-yi-bu-graphql-fu-wu-:ji-yu-tide-+-async-graphql-+-mongodb(3)--zhong-gou)
+
+- [（1）- 起步及 crate 选择](<https://blog.budshome.com/budshome/gou-jian-rust-yi-bu-graphql-fu-wu-:ji-yu-tide-+-async-graphql-+-mongodb(1)--qi-bu-ji-crate-xuan-ze>)
+- [（2）- 查询服务](<https://blog.budshome.com/budshome/gou-jian-rust-yi-bu-graphql-fu-wu-:ji-yu-tide-+-async-graphql-+-mongodb(2)--cha-xun-fu-wu>)
+- [（3）- 重构](<https://blog.budshome.com/budshome/gou-jian-rust-yi-bu-graphql-fu-wu-:ji-yu-tide-+-async-graphql-+-mongodb(3)--zhong-gou>)
 
 - [sansx/cn_poems_api](https://github.com/sansx/cn_poems_api)
 - [Z4RX/axum_jwt_example](https://github.com/Z4RX/axum_jwt_example)
@@ -24,3 +25,21 @@ cargo watch -q -c -w src/ -x run
 - [JavaHello/rust-web-example](https://github.com/JavaHello/rust-web-example)
 - [ericpubu/aoc-2020](https://github.com/ericpubu/aoc-2020)
 - [beemstream/profile-service](https://github.com/beemstream/profile-service)
+
+---
+
+[Building Powerful GraphQL Servers with Rust](https://dev.to/open-graphql/building-powerful-graphql-servers-with-rust-3gla)
+
+[Rust GraphQL Example](https://github.com/iwilsonq/rust-graphql-example)
+
+It is based on async-graphql, actix-web, diesel, powered by Rust.
+[heyrict/cindy-next-rust](https://github.com/heyrict/cindy-next-rust)
+
+[openmsupply/remote-server](https://github.com/openmsupply/remote-server)
+
+[biluohc/actixweb-sqlx-jwt](https://github.com/biluohc/actixweb-sqlx-jwt)
+
+A opensource community written by rust axum+sqlx
+[Whatsoo/whatsoo](https://github.com/Whatsoo/whatsoo)
+
+[WKHAllen/GreenPollAPI](https://github.com/WKHAllen/GreenPollAPI)
