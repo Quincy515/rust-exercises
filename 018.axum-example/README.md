@@ -14,7 +14,8 @@ cargo watch -q -c -w src/ -x run
 - [sansx/cn_poems_api](https://github.com/sansx/cn_poems_api)
 - [Z4RX/axum_jwt_example](https://github.com/Z4RX/axum_jwt_example)
 - [linux-china/axum-demo](https://github.com/linux-china/axum-demo)
-- [chuancoder/rust-web](https://github.com/chuancoder/rust-web)
+- [chuancoder/rust-web](https://gith
+ub.com/chuancoder/rust-web)
 
 - [SakaDream/actix-web-rest-api-with-jwt](https://github.com/SakaDream/actix-web-rest-api-with-jwt)
 - [auth0-blog/actix-diesel-auth](https://github.com/auth0-blog/actix-diesel-auth)
