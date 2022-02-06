@@ -44,3 +44,9 @@ A opensource community written by rust axum+sqlx
 [Whatsoo/whatsoo](https://github.com/Whatsoo/whatsoo)
 
 [WKHAllen/GreenPollAPI](https://github.com/WKHAllen/GreenPollAPI)
+
+jotsy - 一个自托管，免费和开源（Apache-2.0）的笔记程序，使用Skytable，Axum和Tokio构建。jotsy最重要的目标是简单，专注于最重要的事情，记笔记。
+
+[文章链接](https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/)，https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/
+
+[Github 链接](https://github.com/ohsayan/jotsy)，https://github.com/ohsayan/jotsy
