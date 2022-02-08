@@ -43,3 +43,5 @@ A opensource community written by rust axum+sqlx
 [Whatsoo/whatsoo](https://github.com/Whatsoo/whatsoo)
 
 [WKHAllen/GreenPollAPI](https://github.com/WKHAllen/GreenPollAPI)
+
+[liyue201/rust-rest-demo](https://github.com/liyue201/rust-rest-demo)
