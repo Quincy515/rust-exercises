@@ -14,7 +14,8 @@ cargo watch -q -c -w src/ -x run
 - [sansx/cn_poems_api](https://github.com/sansx/cn_poems_api)
 - [Z4RX/axum_jwt_example](https://github.com/Z4RX/axum_jwt_example)
 - [linux-china/axum-demo](https://github.com/linux-china/axum-demo)
-- [chuancoder/rust-web](https://github.com/chuancoder/rust-web)
+- [chuancoder/rust-web](https://gith
+  ub.com/chuancoder/rust-web)
 
 - [SakaDream/actix-web-rest-api-with-jwt](https://github.com/SakaDream/actix-web-rest-api-with-jwt)
 - [auth0-blog/actix-diesel-auth](https://github.com/auth0-blog/actix-diesel-auth)
@@ -45,3 +46,9 @@ A opensource community written by rust axum+sqlx
 [WKHAllen/GreenPollAPI](https://github.com/WKHAllen/GreenPollAPI)
 
 [liyue201/rust-rest-demo](https://github.com/liyue201/rust-rest-demo)
+
+jotsy - 一个自托管，免费和开源（Apache-2.0）的笔记程序，使用 Skytable，Axum 和 Tokio 构建。jotsy 最重要的目标是简单，专注于最重要的事情，记笔记。
+
+[文章链接](https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/)，https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/
+
+[Github 链接](https://github.com/ohsayan/jotsy)，https://github.com/ohsayan/jotsy
