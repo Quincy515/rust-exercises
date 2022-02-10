@@ -52,3 +52,5 @@ jotsy - 一个自托管，免费和开源（Apache-2.0）的笔记程序，使�
 [文章链接](https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/)，https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/
 
 [Github 链接](https://github.com/ohsayan/jotsy)，https://github.com/ohsayan/jotsy
+
+[新手上路，用 rust 撸了一个 restful api 服务的 demo - 大家的项目](https://github.com/liyue201/rust-rest-demo)
