@@ -54,3 +54,7 @@ jotsy - 一个自托管，免费和开源（Apache-2.0）的笔记程序，使�
 [Github 链接](https://github.com/ohsayan/jotsy)，https://github.com/ohsayan/jotsy
 
 [新手上路，用 rust 撸了一个 restful api 服务的 demo - 大家的项目](https://github.com/liyue201/rust-rest-demo)
+
+
+一个基于rust axum的web 框架 高性能易上手 可用于构建任何web后端项目 供rust爱好者学习使用,基础缓存定义,redis,orm框架选用Ribatis,casbin-rs集成,适配器编写 ,用户权限jwt 融合casbin-rs
+[Cassie/cassie_axum](https://gitee.com/stringlxd/cassie_axum)
