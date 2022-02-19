@@ -2,7 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct Msg {
     pub room: String,
     pub username: String,
@@ -10,7 +10,7 @@ pub struct Msg {
     pub data: MsgData,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum MsgData {
     Join,
@@ -35,10 +35,10 @@ impl TryFrom<&Msg> for String {
 }
 
 impl Msg {
-    pub fn new(room: String, username: String, data: MsgData) -> Self {
+    pub fn new(room: &str, username: &str, data: MsgData) -> Self {
         Msg {
-            room,
-            username,
+            room: room.into(),
+            username: username.into(),
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -48,18 +48,14 @@ impl Msg {
     }
 
     pub fn join(room: &str, username: &str) -> Self {
-        Msg::new(room.into(), username.into(), MsgData::Join)
+        Msg::new(room, username, MsgData::Join)
     }
 
     pub fn leave(room: &str, username: &str) -> Self {
-        Msg::new(room.into(), username.into(), MsgData::Leave)
+        Msg::new(room, username, MsgData::Leave)
     }
 
     pub fn message(room: &str, username: &str, message: &str) -> Self {
-        Msg::new(
-            room.into(),
-            username.into(),
-            MsgData::Message(message.into()),
-        )
+        Msg::new(room, username, MsgData::Message(message.into()))
     }
 }
