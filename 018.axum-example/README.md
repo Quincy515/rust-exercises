@@ -56,3 +56,5 @@ jotsy - 一个自托管，免费和开源（Apache-2.0）的笔记程序，使�
 RESTful API template built with Rust lang. It uses [MongoDB](https://docs.mongodb.com/) database and [Axum](https://github.com/tokio-rs/axum) HTTP framework.
 
 [ndelvalle](https://github.com/ndelvalle)/**[rustapi](https://github.com/ndelvalle/rustapi)**
+
+[新手上路，用 rust 撸了一个 restful api 服务的 demo - 大家的项目](https://github.com/liyue201/rust-rest-demo)
