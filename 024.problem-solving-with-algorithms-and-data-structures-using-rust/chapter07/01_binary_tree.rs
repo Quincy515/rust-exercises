@@ -13,7 +13,7 @@ struct BinaryTree<T> {
     right: Link<T>,
 }
 
-impl<T: Clone> BinaryTree<T> {
+impl<T: Clone + Debug> BinaryTree<T> {
     fn new(key: T) -> Self {
         BinaryTree {
             key: key,
@@ -62,6 +62,78 @@ impl<T: Clone> BinaryTree<T> {
     fn set_key(&mut self, key: T) {
         self.key = key;
     }
+
+    /// 前序遍历: 内部实现
+    fn preorder(&self) {
+        println!("key is {:?}", &self.key);
+        // as_ref 获取节点引用，因为打印不能更改节点
+        if !self.left.is_none() {
+            self.left.as_ref().unwrap().preorder();
+        }
+        if !self.right.is_none() {
+            self.right.as_ref().unwrap().preorder();
+        }
+    }
+
+    /// 后序遍历: 内部实现
+    fn postorder(&self) {
+        if !self.left.is_none() {
+            self.left.as_ref().unwrap().postorder();
+        }
+        if !self.right.is_none() {
+            self.right.as_ref().unwrap().postorder();
+        }
+        println!("key is {:?}", &self.key);
+    }
+
+    /// 中序遍历: 内部实现
+    fn inorder(&self) {
+        if !self.left.is_none() {
+            self.left.as_ref().unwrap().inorder();
+        }
+        println!("key is {:?}", &self.key);
+        if !self.right.is_none() {
+            self.right.as_ref().unwrap().inorder();
+        }
+    }
+}
+
+/// 前序遍历: 外部实现
+fn preorder<T: Clone + Debug>(bt: Link<T>) {
+    if !bt.is_none() {
+        println!("key is {:?}", bt.as_ref().unwrap().get_key());
+        preorder(bt.as_ref().unwrap().get_left());
+        preorder(bt.as_ref().unwrap().get_right());
+    }
+}
+
+/// 后序遍历: 外部实现
+fn postorder<T: Clone + Debug>(bt: Link<T>) {
+    if !bt.is_none() {
+        postorder(bt.as_ref().unwrap().get_left());
+        postorder(bt.as_ref().unwrap().get_right());
+        println!("key is {:?}", bt.as_ref().unwrap().get_key());
+    }
+}
+
+/// 中序遍历: 外部实现
+fn inorder<T: Clone + Debug>(bt: Link<T>) {
+    if !bt.is_none() {
+        inorder(bt.as_ref().unwrap().get_left());
+        println!("key is {:?}", bt.as_ref().unwrap().get_key());
+        inorder(bt.as_ref().unwrap().get_right());
+    }
+}
+
+/// 按照节点位置返回节点组成的字符串
+fn get_exp<T: Clone + Debug + Display>(bt: Link<T>) -> String {
+    let mut exp = "".to_string();
+    if !bt.is_none() {
+        exp = "(".to_string() + &get_exp(bt.as_ref().unwrap().get_left());
+        exp += &bt.as_ref().unwrap().get_key().to_string();
+        exp += &(get_exp(bt.as_ref().unwrap().get_right()) + ")");
+    }
+    exp
 }
 
 fn main() {
@@ -83,4 +155,17 @@ fn main() {
     println!("left val is {:#?}", left);
     let right = bt.get_right();
     println!("right val is {:#?}", right);
+
+    bt.preorder();
+    bt.inorder();
+    bt.postorder();
+
+    let nk = Some(Box::new(bt));
+
+    preorder(nk.clone());
+    inorder(nk.clone());
+    postorder(nk.clone());
+
+    let tree_str = get_exp(nk);
+    println!("String expr is {tree_str}");
 }
