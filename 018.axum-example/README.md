@@ -15,6 +15,7 @@ cargo watch -q -c -w src/ -x run
 
 ## Axum
 
+- ☆ [launchbadge](https://github.com/launchbadge)/[realworld-axum-sqlx](https://github.com/launchbadge/realworld-axum-sqlx) A Rust implementation of the Realworld demo app spec using Axum and SQLx.
 - ☆ axum+sqlx [Z4RX/axum_jwt_example](https://github.com/Z4RX/axum_jwt_example)
 - [linux-china/axum-demo](https://github.com/linux-china/axum-demo)
 - ☆ A opensource community written by rust axum+sqlx [Whatsoo/whatsoo](https://github.com/Whatsoo/whatsoo)
