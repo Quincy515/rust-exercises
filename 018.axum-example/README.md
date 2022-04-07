@@ -19,9 +19,10 @@ cargo watch -q -c -w src/ -x run
 - ☆ axum+sqlx [Z4RX/axum_jwt_example](https://github.com/Z4RX/axum_jwt_example)
 - [linux-china/axum-demo](https://github.com/linux-china/axum-demo)
 - ☆ A opensource community written by rust axum+sqlx [Whatsoo/whatsoo](https://github.com/Whatsoo/whatsoo)
-- ☆ RESTful API template built with Rust lang. It uses [MongoDB](https://docs.mongodb.com/) database and [Axum](https://github.com/tokio-rs/axum) HTTP framework.[ndelvalle](https://github.com/ndelvalle)/**[rustapi](https://github.com/ndelvalle/rustapi)** 
+- ☆ RESTful API template built with Rust lang. It uses [MongoDB](https://docs.mongodb.com/) database and [Axum](https://github.com/tokio-rs/axum) HTTP framework.[ndelvalle](https://github.com/ndelvalle)/**[rustapi](https://github.com/ndelvalle/rustapi)**
 - axum+rbatis [新手上路，用 rust 撸了一个 restful api 服务的 demo - 大家的项目](https://github.com/liyue201/rust-rest-demo)
 - axum+[Skytable](https://github.com/skytable/skytable) jotsy - 一个自托管，免费和开源（Apache-2.0）的笔记程序，使用 Skytable，Axum 和 Tokio 构建。jotsy 最重要的目标是简单，专注于最重要的事情，记笔记。[文章链接](https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/)，https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/ [Github 链接](https://github.com/ohsayan/jotsy)，https://github.com/ohsayan/jotsy
+- axum + sqlx 厨房小程序 https://github.com/noxue/banquet
 
 ## Actix
 
@@ -37,6 +38,7 @@ cargo watch -q -c -w src/ -x run
 - [JavaHello/rust-web-example](https://github.com/JavaHello/rust-web-example)
 - [ericpubu/aoc-2020](https://github.com/ericpubu/aoc-2020)
 - [beemstream/profile-service](https://github.com/beemstream/profile-service)
+- [clifinger/canduma: A Rust Boilerplate server with GraphQL API, Diesel, PostgreSQL, session authentication and JWT (github.com)](https://github.com/clifinger/canduma)
 
 ---
 
@@ -52,8 +54,6 @@ It is based on async-graphql, actix-web, diesel, powered by Rust.
 [biluohc/actixweb-sqlx-jwt](https://github.com/biluohc/actixweb-sqlx-jwt)
 
 [WKHAllen/GreenPollAPI](https://github.com/WKHAllen/GreenPollAPI)
-
-
 
 ## poem
 
