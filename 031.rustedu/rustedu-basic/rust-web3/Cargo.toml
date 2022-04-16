@@ -1,0 +1,17 @@
+[package]
+edition = "2021"
+name = "rust-web3"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies.web3]
+default-features = false
+features = ["ws-tls-tokio", "signing"]
+version = "0.18"
+
+[dependencies]
+aoko = "0.3.0-alpha.1" 
+itertools = "0.10" 
+secp256k1 = "0.22" # 链下签名
+tokio = {version = "1", features = ["full"]}

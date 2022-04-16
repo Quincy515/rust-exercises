@@ -1,0 +1,9 @@
+- lifetimes
+- functional programming
+- advance types / macro
+- smart <mark>pointers</mark>
+- impl list 1
+- impl list 2
+- multithread
+- unsaferust
+- unsafe list
