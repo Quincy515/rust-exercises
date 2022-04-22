@@ -1,0 +1,2 @@
+[workspace]
+members = ["ws-server", "ws-shared"]

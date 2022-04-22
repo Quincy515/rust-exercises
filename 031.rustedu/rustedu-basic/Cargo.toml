@@ -1,0 +1,13 @@
+[package]
+edition = "2021"
+name = "rustedu-basic"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aoko = "0.3.0-alpha.1"
+itertools = "*"
+
+[workspace]
+members = ["rust-web3"]
