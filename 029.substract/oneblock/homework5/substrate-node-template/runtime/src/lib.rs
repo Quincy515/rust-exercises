@@ -292,8 +292,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
-		TemplateModule: pallet_template,
-		PoeModule: pallet_poe,
+		Poe: pallet_poe,
 	}
 );
 
