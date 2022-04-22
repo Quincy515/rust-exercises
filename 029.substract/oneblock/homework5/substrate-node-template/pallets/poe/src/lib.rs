@@ -9,6 +9,7 @@ pub use pallet::*;
 pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use sp_std::vec::Vec;
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
@@ -16,6 +17,8 @@ pub mod pallet {
     }
 
     #[pallet::pallet]
+    // https://github.com/paritytech/substrate/issues/10652
+    #[pallet::without_storage_info]
     #[pallet::generate_store(pub (super) trait Store)]
     pub struct Pallet<T>(_);
 
@@ -24,16 +27,16 @@ pub mod pallet {
     pub type Proofs<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
-        u32,
+        Vec<u8>,
         (T::AccountId, T::BlockNumber)
     >;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub (super) fn deposit_event)]
     pub enum Event<T: Config> {
-        ClaimCreated(T::AccountId, u32),
-        ClaimRevoked(T::AccountId, u32),
-        ClaimTransfered(T::AccountId, T::AccountId, u32),
+        ClaimCreated(T::AccountId, Vec<u8>),
+        ClaimRevoked(T::AccountId, Vec<u8>),
+        ClaimTransfered(T::AccountId, T::AccountId, Vec<u8>),
     }
 
     #[pallet::error]
@@ -52,7 +55,7 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn create_claim(
             origin: OriginFor<T>,
-            claim: u32,
+            claim: Vec<u8>,
         ) -> DispatchResult {
             let sender = ensure_signed(origin)?;
             ensure!(!Proofs::<T>::contains_key(&claim),Error::<T>::ProofAlreadyClaimed);
@@ -66,7 +69,7 @@ pub mod pallet {
         #[pallet::weight(10_000)]
         pub fn revoke_claim(
             origin: OriginFor<T>,
-            claim: u32,
+            claim: Vec<u8>,
         ) -> DispatchResult {
             let sender = ensure_signed(origin)?;
             ensure!(Proofs::<T>::contains_key(&claim),Error::<T>::NoSuchProof);
@@ -82,7 +85,7 @@ pub mod pallet {
         pub fn transfer_claim(
             origin: OriginFor<T>,
             receiver: T::AccountId,
-            proof: u32,
+            proof: Vec<u8>,
         ) -> DispatchResult {
             let sender = ensure_signed(origin)?;
 
