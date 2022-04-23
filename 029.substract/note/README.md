@@ -1,6 +1,7 @@
 ## 学习 substrate 笔记
 - [创建我们的第一条链](./创建我们的第一条链.md)
 - [pallet 概念介绍](./pallet概念介绍.md)
+- [substrate-node-template 源码结构](./substrate-node-template源码结构.md)
 
 
 ## 相关资料
