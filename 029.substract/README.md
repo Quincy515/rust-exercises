@@ -1,0 +1,2 @@
+- [OneBlock+ Dev Community](https://discord.gg/vraKjnm2)
+- [区块链框架Substrate官网教程bilibili视频](https://www.bilibili.com/video/BV1RL411b7Nh)
