@@ -8,9 +8,9 @@
 
 ## 什么是 Runtime？
 
-简而言之，[*Runtime*](https://substrate.dev/docs/en/overview/glossary#runtime) 是区块链的执行逻辑，有时称为状态转换函数 [**STF**](https://substrate.dev/docs/en/overview/glossary#stf-state-transition-function)。在 [Substrate](https://substrate.dev/docs/en/overview/glossary#substrate) 中，它以 WebAssembly 二进制文件这种实现中立、机器可执行的格式存储在链上 。其它系统倾向于仅以人类可读的格式来表达（例如 Ethereum）或者完全不可读格式（例如 Bitcoin）。
+简而言之，[*Runtime*](https://docs.substrate.io/v3/getting-started/glossary/#runtime) 是区块链的执行逻辑，有时称为状态转换函数 [**STF**](https://docs.substrate.io/v3/getting-started/glossary/#state-transition-function-stf)。在 [Substrate](https://docs.substrate.io/v3/getting-started/glossary/#substrate) 中，它以 WebAssembly 二进制文件这种实现中立、机器可执行的格式存储在链上 。其它系统倾向于仅以人类可读的格式来表达（例如 Ethereum）或者完全不可读格式（例如 Bitcoin）。
 
-## 什么是 Module？
+## 什么是 Module/Pallet？
 
 你的区块链 runtime 由多种特性和功能组成，这些特性和功能共同为区块链提供支撑。例如：
 
@@ -20,13 +20,13 @@
 - Runtime 升级
 - 更多...
 
-[这些](https://github.com/paritytech/substrate/tree/master/srml)是代码库中提供的所有模块，你可以轻松地将其包含在 runtime 中。Substrate 提供的这些默认模块集合被称为 Substrate Runtime Module Library [**SRML**](https://substrate.dev/docs/en/overview/glossary#srml-substrate-runtime-module-library)
+[这些](https://github.com/paritytech/substrate/tree/master/frame)是代码库中提供的所有模块现在成为 [pallet](https://docs.substrate.io/v3/getting-started/glossary/#pallet)，你可以轻松地将其包含在 runtime 中。Substrate 提供的这些默认模块集合被称为 Substrate Runtime Module Library [**FRAME**](https://docs.substrate.io/v3/getting-started/glossary/#frame)
 
-使用 Substrate 框架，你可以轻松地在 runtime 中创建新的 module。这就是我们在本教程中将要做的！
+使用 Substrate 框架，你可以轻松地在 runtime 中创建新的 module/pallet。这就是我们在本教程中将要做的！
 
 ## Rust
 
-目前，Substrate 和 Runtime 开发使用 [Rust编程语言](https://www.parity.io/why-rust/)。
+目前，Substrate 和 Runtime 开发使用 [Rust编程语言](https://www.parity.io/blog/why-rust)。
 
 本教程 **不是** 学习 Rust 的课程，但我们将会介绍在使用本指南时，使用Rust和使用其它语言相比可能遇到的一些基本差异。
 
