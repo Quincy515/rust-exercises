@@ -1,6 +1,0 @@
-[book]
-authors = ["CusterFun"]
-language = "en"
-multilingual = false
-src = "src"
-title = "学习substratekit笔记"
