@@ -1,0 +1,6 @@
+[book]
+authors = ["CusterFun"]
+language = "en"
+multilingual = false
+src = "src"
+title = "substrate-note"
