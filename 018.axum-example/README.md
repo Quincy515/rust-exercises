@@ -24,6 +24,7 @@ cargo watch -q -c -w src/ -x run
 - axum+[Skytable](https://github.com/skytable/skytable) jotsy - 一个自托管，免费和开源（Apache-2.0）的笔记程序，使用 Skytable，Axum 和 Tokio 构建。jotsy 最重要的目标是简单，专注于最重要的事情，记笔记。[文章链接](https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/)，https://www.reddit.com/r/rust/comments/skizcp/jotsy_a_selfhosted_notes_app_powered_by_skytable/ [Github 链接](https://github.com/ohsayan/jotsy)，https://github.com/ohsayan/jotsy
 - axum + sqlx 厨房小程序 https://github.com/noxue/banquet
 - [noxue/noxue-code: 利用docker实现在线编译器，可自定义配置支持任意编程语言 (github.com)](https://github.com/noxue/noxue-code)
+- 图书管理系统 https://github.com/lz1998/axum-book-management
 
 ## Actix
 
