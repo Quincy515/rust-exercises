@@ -45,6 +45,11 @@ Customer::find()
 SELECT `customer`.`first_name`, `customer`.`last_name` FROM `customer` WHERE `customer`.`last_name` = 'ZIEGLER'
 ```
 
+>**Note**
+>
+>- eq
+>- into_model
+
 #### SQL 语句
 
 ```bash
@@ -216,7 +221,7 @@ pub async fn get_language_column_as(db: &DatabaseConnection) -> Result<()> {
 SELECT `language`.`language_id`, `language`.`name` AS `language_name`, `language_id` * 3 AS `lang_pi_value` FROM `language`
 ```
 
-> **warning** 
+> **Warning** 
 >
 > - u8 * 3.1415927 
 > - upper() 函数
@@ -309,7 +314,7 @@ pub async fn get_actor_id(db: &DatabaseConnection) -> Result<()> {
 SELECT `actor`.`actor_id` FROM `actor` ORDER BY `actor`.`actor_id` DESC
 ```
 
-> **warning** 
+> **Warning** 
 >
 > 在 `SELECT` 后面使用 `DISTINCT` 关键字来移除重复数据
 
