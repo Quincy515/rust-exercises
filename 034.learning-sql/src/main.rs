@@ -1,5 +1,8 @@
+mod entity;
+use entity::prelude::*;
+
 use anyhow::Result;
-use sea_orm::{ConnectOptions, Database};
+use sea_orm::{ConnectOptions, Database, EntityTrait};
 use std::time::Duration;
 
 #[tokio::main]
@@ -16,5 +19,7 @@ async fn main() -> Result<()> {
         .idle_timeout(Duration::from_secs(8))
         .max_lifetime(Duration::from_secs(8));
     let db = Database::connect(opt).await?;
+    let actor = Actor::find().all(&db).await?;
+    println!("{:?}", actor);
     Ok(())
 }

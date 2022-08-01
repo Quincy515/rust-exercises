@@ -8,6 +8,9 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 tracing = "0.1"
-tracing-subscriber = "0.3.15"
+tracing-subscriber = "0.3"
+serde_json = "1.0"
+serde_derive = "1.0"
+serde = {version = "1", features = ["derive"]}# 序列化/反序列化数据
 tokio = {version = "1", features = ["full"]}
 sea-orm = {version = "0.9", features = ["runtime-tokio-native-tls", "sqlx-mysql", "macros", "debug-print"]}
