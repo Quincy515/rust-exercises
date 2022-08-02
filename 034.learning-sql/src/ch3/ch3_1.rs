@@ -16,7 +16,7 @@ pub async fn get_customer_empty(db: &DatabaseConnection) -> Result<()> {
         .select_only()
         .column(customer::Column::FirstName)
         .column(customer::Column::LastName)
-        .filter(customer::Column::LastName.contains("SMITH"))
+        .filter(customer::Column::LastName.eq("SMITH"))
         .into_model::<CustomerRes>()
         .all(db)
         .await?;

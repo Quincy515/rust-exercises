@@ -20,6 +20,11 @@ async fn main() -> Result<()> {
         .max_lifetime(Duration::from_secs(8));
     let db = Database::connect(opt).await?;
 
-    ch3::ch3_1::get_customer_empty(&db).await?;
+    // ch3::ch3_1::get_category_list(&db).await?;
+    // ch3::ch3_3::get_language_list(&db).await?;
+    // ch3::ch3_3::get_language_column(&db).await?;
+    // ch3::ch3_3::get_language_column_as(&db).await?;
+    ch3::ch3_3::get_actor_id(&db).await?;
+
     Ok(())
 }
