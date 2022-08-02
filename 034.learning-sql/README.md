@@ -1,4 +1,18 @@
-https://github.com/Liangdi/rust-demos
+- [The Sakila Database](#the-sakila-database)
+- [3.1 查询机制](#31-查询机制)
+- [3.3 `SELECT` 子句](#33-select-子句)
+  - [3.3.1 列的别名](#331-列的别名)
+  - [3.3.2 移除重复数据](#332-移除重复数据)
+- [3.4 `FROM` 子句](#34-from-子句)
+  - [3.4.1 数据表](#341-数据表)
+  - [3.4.2 数据表链接](#342-数据表链接)
+- [3.5 `WHERE` 子句](#35-where-子句)
+- [3.6 `GROUP BY` 和 `HAVING` 子句](#36-group-by-和-having-子句)
+- [3.7 `ORDER BY` 子句](#37-order-by-子句)
+- [4.1 条件评估](#41-条件评估)
+- [4.2 构建条件](#42-构建条件)
+- [4.3 条件类型](#43-条件类型)
+- [4.4 null:  4个字母的单词](#44-null--4个字母的单词)
 
 ```bash
 sea-orm-cli generate entity -v -u mysql://root:root1234@127.0.0.1:3306/sakila -o src/entity -t actor,category  --with-serde both
@@ -13,7 +27,7 @@ sakila-data.sql
 
 ### 3.1 查询机制
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT first_name, last_name
@@ -22,7 +36,7 @@ mysql> SELECT first_name, last_name
 Empty set (0.02 sec)
 ```
 
-#### SeaORM
+***SeaORM***
 
 ```rust
 #[derive(Debug, FromQueryResult)]
@@ -51,7 +65,7 @@ SELECT `customer`.`first_name`, `customer`.`last_name` FROM `customer` WHERE `cu
 >- `select_only` `column`
 >- `into_model::<CustomerRes>()`
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT *
@@ -79,7 +93,7 @@ mysql> SELECT *
 16 rows in set (0.02 sec)
 ```
 
-#### SeaORM
+***SeaORM***
 
 ```rust
 Category::find().all(db).await?;
@@ -93,7 +107,7 @@ SELECT `category`.`category_id`, `category`.`name`, `category`.`last_update` FRO
 
 ### 3.3 `SELECT` 子句
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT *
@@ -111,7 +125,7 @@ mysql> SELECT *
 6 rows in set (0.03 sec)
 ```
 
-#### SeaORM
+***SeaORM***
 
 ```rust
 Language::find().all(db).await?;
@@ -121,7 +135,7 @@ Language::find().all(db).await?;
 SELECT `language`.`language_id`, `language`.`name`, `language`.`last_update` FROM `language`
 ```
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT language_id, name, last_update
@@ -139,7 +153,7 @@ mysql> SELECT language_id, name, last_update
 6 rows in set (0.00 sec)
 ```
 
-#### SeaORM
+***SeaORM***
 
 ```rust
 
@@ -169,9 +183,9 @@ SELECT `language`.`language_id`, `language`.`name`,
 `language`.`last_update` FROM `language`
 ```
 
-### 3.3.1 列的别名
+#### 3.3.1 列的别名
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT language_id,
@@ -192,7 +206,7 @@ mysql> SELECT language_id,
 6 rows in set (0.04 sec)
 ```
 
-#### SeaORM
+***SeaORM***
 
 ```rust
  #[derive(Debug, FromQueryResult)]
@@ -233,9 +247,9 @@ SELECT `language`.`language_id`, `language`.`name` AS `language_name`, `language
 > - u8 * 3.1415927 
 > - upper() 函数
 
-### 3.3.2 移除重复数据
+#### 3.3.2 移除重复数据
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT actor_id FROM film_actor ORDER BY actor_id;
@@ -297,7 +311,7 @@ mysql> SELECT DISTINCT actor_id FROM film_actor ORDER BY actor_id;
 200 rows in set (0.01 sec)
 ```
 
-#### SeaORM
+***SeaORM***
 
 ```rust
 #[derive(Debug, FromQueryResult)]
@@ -331,9 +345,9 @@ SELECT `actor`.`actor_id` FROM `actor` ORDER BY `actor`.`actor_id` DESC
 
 ### 3.4 `FROM` 子句
 
-### 3.4.1 数据表
+#### 3.4.1 数据表
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT concat(cust.last_name, ', ', cust.first_name) full_name
@@ -351,16 +365,16 @@ mysql> SELECT concat(cust.last_name, ', ', cust.first_name) full_name
 2 rows in set (0.00 sec)
 ```
 
-#### SeaORM
+***SeaORM***
 
 > **Warning**
 >
 > - `concat()`
 > - subquery
 
-### 3.4.2 数据表链接
+#### 3.4.2 数据表链接
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT customer.first_name, customer.last_name,
@@ -392,7 +406,7 @@ mysql> SELECT customer.first_name, customer.last_name,
 16 rows in set (0.01 sec)
 ```
 
-#### SeaORM
+***SeaORM***
 
 ```rust
 #[derive(Debug, FromQueryResult)]
@@ -453,7 +467,7 @@ WHERE
 
 ### 3.5 `WHERE` 子句
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT title
@@ -495,9 +509,7 @@ mysql> SELECT title
 29 rows in set (0.00 sec)
 ```
 
-
-
-#### SeaORM
+***SeaORM***
 
 ```rust
 #![allow(dead_code)]
@@ -574,7 +586,7 @@ mysql> SELECT title
 
 多个查询条件，比如在 `where` 子句中同时使用运算符 `and` 和 `or`
 
-#### SQL 语句
+***SQL 语句***
 
 ```bash
 mysql> SELECT title, rating, rental_duration
@@ -606,9 +618,7 @@ The where Clause | 59
 68 rows in set (0.00 sec)
 ```
 
-#### 
-
-#### SeaORM
+***SeaORM***
 
 ```rust
 #[derive(Debug, FromQueryResult)]
@@ -666,29 +676,331 @@ WHERE
 
 
 
-### 3.1 查询机制
+### 3.6 `GROUP BY` 和 `HAVING` 子句
 
-#### SQL 语句
+- `GROUP BY` 根据列值对数据进行分组
+- `HAVING` 过滤数据
 
-#### SeaORM
+要求：**找出所有租借过 40 部或更多电影的客户**
 
+***SQL 语句***
 
+```bash
+mysql> SELECT c.first_name, c.last_name, count(*)
+ -> FROM customer c
+ -> INNER JOIN rental r
+ -> ON c.customer_id = r.customer_id
+ -> GROUP BY c.first_name, c.last_name
+ -> HAVING count(*) >= 40;
++------------+-----------+----------+
+| first_name | last_name | count(*) |
++------------+-----------+----------+
+| TAMMY | SANDERS | 41 |
+| CLARA | SHAW | 42 |
+| ELEANOR | HUNT | 46 |
+| SUE | PETERS | 40 |
+| MARCIA | DEAN | 42 |
+| WESLEY | BULL | 40 |
+| KARL | SEAL | 45 |
++------------+-----------+----------+
+7 rows in set (0.03 sec)
+```
 
-### 3.1 查询机制
+***SeaORM***
 
-#### SQL 语句
+```rust
+#![allow(dead_code)]
+use crate::entity::{customer, prelude::*};
+use anyhow::Result;
+use sea_orm::{sea_query::Expr, DatabaseConnection, EntityTrait, FromQueryResult, QuerySelect};
 
-#### SeaORM
+#[derive(Debug, FromQueryResult)]
+struct CustomerGroupBy {
+    first_name: String,
+    last_name: String,
+    count: i32,
+}
+pub async fn get_customer_group_by(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::FirstName)
+        .column(customer::Column::LastName)
+        .column_as(Expr::asterisk().count(), "count")
+        .inner_join(Rental)
+        .group_by(customer::Column::FirstName)
+        .group_by(customer::Column::LastName)
+        .having(Expr::expr(Expr::asterisk().count()).gte(40))
+        // .build(DbBackend::MySql)
+        // .to_string();
+        .into_model::<CustomerGroupBy>()
+        .all(db)
+        .await?;
 
+    println!("{:#?}", customer);
+    Ok(())
+}
+```
 
+```sql
+SELECT 
+  `customer`.`first_name`, 
+  `customer`.`last_name`, 
+  COUNT(*) AS `count` 
+FROM 
+  `customer` 
+  INNER JOIN `rental` ON `customer`.`customer_id` = `rental`.`customer_id` 
+GROUP BY 
+  `customer`.`first_name`, 
+  `customer`.`last_name` 
+HAVING 
+  COUNT(*) >= 40
+```
 
+> **Note**
+>
+> - `COUNT(*)` : `.column_as(Expr::asterisk().count(), "count")`
+> - `inner_join`
+> - `group_by`
+> - `having`
+> - `COUNT(*) >= 40` : `Expr::expr(Expr::asterisk().count()).gte(40)`
 
+### 3.7 `ORDER BY` 子句
 
-### 3.1 查询机制
+要求：**查询可以返回在 2005 年 6 月 14 日租借电影的所有客户**
 
-#### SQL 语句
+***SQL 语句***
 
-#### SeaORM
+```bash
+mysql> SELECT c.first_name, c.last_name,
+ -> time(r.rental_date) rental_time
+ -> FROM customer c
+ -> INNER JOIN rental r
+ -> ON c.customer_id = r.customer_id
+ -> WHERE date(r.rental_date) = '2005-06-14';
++------------+-----------+-------------+
+| first_name | last_name | rental_time |
++------------+-----------+-------------+
+| JEFFERY | PINSON | 22:53:33 |
+| ELMER | NOE | 22:55:13 |
+| MINNIE | ROMERO | 23:00:34 |
+| MIRIAM | MCKINNEY | 23:07:08 |
+| DANIEL | CABRAL | 23:09:38 |
+| TERRANCE | ROUSH | 23:12:46 |
+| JOYCE | EDWARDS | 23:16:26 |
+| GWENDOLYN | MAY | 23:16:27 |
+| CATHERINE | CAMPBELL | 23:17:03 |
+| MATTHEW | MAHAN | 23:25:58 |
+| HERMAN | DEVORE | 23:35:09 |
+| AMBER | DIXON | 23:42:56 |
+The order by Clause | 61
+| TERRENCE | GUNDERSON | 23:47:35 |
+| SONIA | GREGORY | 23:50:11 |
+| CHARLES | KOWALSKI | 23:54:34 |
+| JEANETTE | GREENE | 23:54:46 |
++------------+-----------+-------------+
+16 rows in set (0.01 sec)
+```
 
+***SeaORM***
 
+```rust
+#![allow(dead_code)]
 
+use crate::entity::{customer, prelude::*, rental};
+use anyhow::Result;
+use sea_orm::{
+    entity::prelude::*,
+    sea_query::{Alias, Expr},
+    DatabaseConnection, EntityTrait, FromQueryResult, JoinType, QueryFilter, QuerySelect,
+    RelationTrait,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct CustomerOrderBy {
+    first_name: String,
+    last_name: String,
+    rental_time: DateTime,
+}
+
+pub async fn get_customer_order_by(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::FirstName)
+        .column(customer::Column::LastName)
+        .column_as(
+            Expr::tbl(Alias::new("rental"), rental::Column::RentalDate).into_simple_expr(),
+            "rental_time",
+        )
+        .join_rev(JoinType::InnerJoin, rental::Relation::Customer.def())
+        .filter(Expr::col(rental::Column::RentalDate).between::<_>("2005-06-14", "2005-06-15"))
+        .into_model::<CustomerOrderBy>()
+        .all(db)
+        .await?;
+
+    println!("{:#?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `customer`.`first_name`, 
+  `customer`.`last_name`, 
+  `rental`.`rental_date` AS `rental_time` 
+FROM 
+  `customer` 
+  INNER JOIN `rental` ON `rental`.`customer_id` = `customer`.`customer_id` 
+WHERE 
+  `rental_date` BETWEEN '2005-06-14' 
+  AND '2005-06-15'
+```
+
+> **Note**
+>
+> - `inner_join`
+>   - `.inner_join(Rental)`
+>   - `join_rev(JoinType::InnerJoin, rental::Relation::Customer.def())`
+>
+> - `date(r.rental_date) = '2005-06-14';`
+>
+>   -  `rental_date BETWEEN '2005-06-14' 
+>       AND '2005-06-15'`
+>
+>   - `Expr::col(rental::Column::RentalDate).between::<_>("2005-06-14", "2005-06-15")`
+
+要求：**查询可以返回在 2005 年 6 月 14 日租借电影的所有客户，并希望结果按姓氏的字母顺序排序**
+
+***SQL 语句***
+
+```bash
+
+mysql> SELECT c.first_name, c.last_name,
+ -> time(r.rental_date) rental_time
+ -> FROM customer c
+ -> INNER JOIN rental r
+ -> ON c.customer_id = r.customer_id
+ -> WHERE date(r.rental_date) = '2005-06-14'
+ -> ORDER BY c.last_name;
++------------+-----------+-------------+
+| first_name | last_name | rental_time |
++------------+-----------+-------------+
+| DANIEL | CABRAL | 23:09:38 |
+| CATHERINE | CAMPBELL | 23:17:03 |
+| HERMAN | DEVORE | 23:35:09 |
+| AMBER | DIXON | 23:42:56 |
+| JOYCE | EDWARDS | 23:16:26 |
+| JEANETTE | GREENE | 23:54:46 |
+| SONIA | GREGORY | 23:50:11 |
+| TERRENCE | GUNDERSON | 23:47:35 |
+| CHARLES | KOWALSKI | 23:54:34 |
+| MATTHEW | MAHAN | 23:25:58 |
+| GWENDOLYN | MAY | 23:16:27 |
+| MIRIAM | MCKINNEY | 23:07:08 |
+| ELMER | NOE | 22:55:13 |
+| JEFFERY | PINSON | 22:53:33 |
+| MINNIE | ROMERO | 23:00:34 |
+| TERRANCE | ROUSH | 23:12:46 |
++------------+-----------+-------------+
+16 rows in set (0.01 sec)
+```
+
+***SeaORM***
+
+```rust
+let customer = Customer::find()
+    .select_only()
+    .column(customer::Column::FirstName)
+    .column(customer::Column::LastName)
+    .column_as(
+        Expr::tbl(Alias::new("rental"), rental::Column::RentalDate).into_simple_expr(),
+        "rental_time",
+    )
+    .join_rev(JoinType::InnerJoin, rental::Relation::Customer.def())
+    .filter(Expr::col(rental::Column::RentalDate).between::<_>("2005-06-14", "2005-06-15"))
+    .order_by_asc(customer::Column::LastName)
+    .into_model::<CustomerOrderBy>()
+    .all(db)
+    .await?;
+```
+
+```sql
+SELECT 
+  `customer`.`first_name`, 
+  `customer`.`last_name`, 
+  `rental`.`rental_date` AS `rental_time` 
+FROM 
+  `customer` 
+  INNER JOIN `rental` ON `rental`.`customer_id` = `customer`.`customer_id` 
+WHERE 
+  `rental_date` BETWEEN '2005-06-14' 
+  AND '2005-06-15' 
+ORDER BY 
+  `customer`.`last_name` ASC
+```
+
+列在 `ORDER BY` 子句中出现的顺序不同，结果不同。
+
+```rust
+let customer = Customer::find()
+    .select_only()
+    .column(customer::Column::FirstName)
+    .column(customer::Column::LastName)
+    .column_as(
+        Expr::tbl(Alias::new("rental"), rental::Column::RentalDate).into_simple_expr(),
+        "rental_time",
+    )
+    .join_rev(JoinType::InnerJoin, rental::Relation::Customer.def())
+    .filter(Expr::col(rental::Column::RentalDate).between::<_>("2005-06-14", "2005-06-15"))
+    .order_by_asc(customer::Column::LastName)
+    .order_by(customer::Column::FirstName, Order::Asc)
+    .into_model::<CustomerOrderBy>()
+    .all(db)
+    .await?;
+```
+
+```sql
+SELECT 
+  `customer`.`first_name`, 
+  `customer`.`last_name`, 
+  `rental`.`rental_date` AS `rental_time` 
+FROM 
+  `customer` 
+  INNER JOIN `rental` ON `rental`.`customer_id` = `customer`.`customer_id` 
+WHERE 
+  `rental_date` BETWEEN '2005-06-14' 
+  AND '2005-06-15' 
+ORDER BY 
+  `customer`.`last_name` ASC, 
+  `customer`.`first_name` ASC
+```
+
+在排序时默认为按照升序排序，如果希望按照降序排序，需要使用 `desc` 。
+
+> **Note**
+>
+> - `order_by_asc(customer::Column::LastName)`
+> - `order_by(customer::Column::FirstName, Order::Asc)`
+
+### 4.1 条件评估
+
+***SQL 语句***
+
+***SeaORM***
+
+### 4.2 构建条件
+
+***SQL 语句***
+
+***SeaORM***
+
+### 4.3 条件类型
+
+***SQL 语句***
+
+***SeaORM***
+
+### 4.4 null:  4个字母的单词
+
+***SQL 语句***
+
+***SeaORM***
