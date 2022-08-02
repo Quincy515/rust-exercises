@@ -981,26 +981,881 @@ ORDER BY
 > - `order_by_asc(customer::Column::LastName)`
 > - `order_by(customer::Column::FirstName, Order::Asc)`
 
-### 4.1 条件评估
-
-***SQL 语句***
-
-***SeaORM***
-
-### 4.2 构建条件
-
-***SQL 语句***
-
-***SeaORM***
-
 ### 4.3 条件类型
 
+#### 4.3.1 相等条件
+
+要求： **在 2005 年 6 月 14 日租借电影的所有客户的电子邮件地址**
+
 ***SQL 语句***
 
+```bash
+mysql> SELECT c.email
+ -> FROM customer c
+ -> INNER JOIN rental r
+ -> ON c.customer_id = r.customer_id
+ -> WHERE date(r.rental_date) = '2005-06-14';
++---------------------------------------+
+| email |
++---------------------------------------+
+| CATHERINE.CAMPBELL@sakilacustomer.org |
+| JOYCE.EDWARDS@sakilacustomer.org |
+| AMBER.DIXON@sakilacustomer.org |
+| JEANETTE.GREENE@sakilacustomer.org |
+| MINNIE.ROMERO@sakilacustomer.org |
+| GWENDOLYN.MAY@sakilacustomer.org |
+| SONIA.GREGORY@sakilacustomer.org |
+| MIRIAM.MCKINNEY@sakilacustomer.org |
+| CHARLES.KOWALSKI@sakilacustomer.org |
+| DANIEL.CABRAL@sakilacustomer.org |
+| MATTHEW.MAHAN@sakilacustomer.org |
+| JEFFERY.PINSON@sakilacustomer.org |
+| HERMAN.DEVORE@sakilacustomer.org |
+| ELMER.NOE@sakilacustomer.org |
+| TERRANCE.ROUSH@sakilacustomer.org |
+| TERRENCE.GUNDERSON@sakilacustomer.org |
++---------------------------------------+
+16 rows in set (0.03 sec)
+```
+
 ***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{customer, prelude::*, rental};
+use anyhow::Result;
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct EqualityConditionsRes {
+    email: String,
+}
+
+pub async fn equality_conditions(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::Email)
+        .inner_join(Rental)
+        .filter(rental::Column::RentalDate.between("2005-06-14", "2005-06-15"))
+        .into_model::<EqualityConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:#?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `customer`.`email` 
+FROM 
+  `customer` 
+  INNER JOIN `rental` ON `customer`.`customer_id` = `rental`.`customer_id` 
+WHERE 
+  `rental`.`rental_date` BETWEEN '2005-06-14' 
+  AND '2005-06-15'
+```
+
+> **Note**
+>
+> - `.filter(rental::Column::RentalDate.between("2005-06-14", "2005-06-15"))`
+
+##### 数据库内置函数 `date()` `time()` 
+
+***SQL 语句***
+
+```bash
+mysql> SELECT c.email
+ -> FROM customer c
+ -> INNER JOIN rental r
+ -> ON c.customer_id = r.customer_id
+ -> WHERE date(r.rental_date) = '2005-06-14';
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{customer, prelude::*, rental};
+use anyhow::Result;
+use sea_orm::{
+    entity::prelude::*,
+    sea_query::{Expr, Func, Iden},
+    ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct EqualityConditionsRes {
+    email: String,
+}
+
+struct Date;
+
+impl Iden for Date {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "date").unwrap();
+    }
+}
+
+pub async fn equality_conditions(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::Email)
+        .inner_join(Rental)
+        .filter(
+            Func::cust(Date)
+                .args(vec![Expr::col(rental::Column::RentalDate)])
+                .equals(Expr::val("2005-06-14")),
+        )
+        // .filter(rental::Column::RentalDate.between("2005-06-14", "2005-06-15"))
+        .into_model::<EqualityConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:#?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `customer`.`email` 
+FROM 
+  `customer` 
+  INNER JOIN `rental` ON `customer`.`customer_id` = `rental`.`customer_id` 
+WHERE 
+  date(`rental_date`) = '2005-06-14'
+```
+
+> **Note**
+>
+> 使用数据库内置函数
+>
+> **pub fn [cust](https://docs.rs/sea-query/0.26.2/sea_query/func/struct.Func.html#method.cust)<T>(func: T) -> [Expr](https://docs.rs/sea-query/0.26.2/sea_query/expr/struct.Expr.html) where   T: [IntoIden](https://docs.rs/sea-query/0.26.2/sea_query/types/trait.IntoIden.html), **
+
+#### 4.3.2 范围条件
+
+要求： **搜索在 2005 年 5 月 25 日之前租借的电影**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT customer_id, rental_date
+ -> FROM rental
+ -> WHERE rental_date < '2005-05-25';
++-------------+---------------------+
+| customer_id | rental_date |
++-------------+---------------------+
+| 130 | 2005-05-24 22:53:30 |
+| 459 | 2005-05-24 22:54:33 |
+| 408 | 2005-05-24 23:03:39 |
+| 333 | 2005-05-24 23:04:41 |
+| 222 | 2005-05-24 23:05:21 |
+| 549 | 2005-05-24 23:08:07 |
+| 269 | 2005-05-24 23:11:53 |
+| 239 | 2005-05-24 23:31:46 |
++-------------+---------------------+
+8 rows in set (0.00 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{prelude::*, rental};
+use anyhow::Result;
+use sea_orm::{
+    entity::prelude::*, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct RangeConditionsRes {
+    customer_id: u16,
+    rental_date: DateTime,
+}
+
+pub async fn range_conditions(db: &DatabaseConnection) -> Result<()> {
+    let customer = Rental::find()
+        .select_only()
+        .column(rental::Column::CustomerId)
+        .column(rental::Column::RentalDate)
+        .filter(rental::Column::RentalDate.lt("2005-05-25"))
+        .into_model::<RangeConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:#?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `rental`.`customer_id`, 
+  `rental`.`rental_date` 
+FROM 
+  `rental` 
+WHERE 
+  `rental`.`rental_date` < '2005-05-25'
+```
+
+
+
+#### 4.3.3 成员条件
+
+要求: **找出评级为'G'或'PG'的所有电影**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT title, rating
+ -> FROM film
+ -> WHERE rating = 'G' OR rating = 'PG';
++---------------------------+--------+
+| title | rating |
++---------------------------+--------+
+| ACADEMY DINOSAUR | PG |
+| ACE GOLDFINGER | G |
+...
+| YOUNG LANGUAGE | G |
++---------------------------+--------+
+372 rows in set (0.00 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{film, prelude::*, sea_orm_active_enums::Rating};
+use anyhow::Result;
+use sea_orm::{
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct MembershipConditionsRes {
+    title: String,
+    rating: Option<Rating>,
+}
+
+pub async fn membership_conditions(db: &DatabaseConnection) -> Result<()> {
+    let customer = Film::find()
+        .select_only()
+        .column(film::Column::Title)
+        .column(film::Column::Rating)
+        .filter(
+            Condition::any()
+                .add(film::Column::Rating.eq("G"))
+                .add(film::Column::Rating.eq("PG")),
+        )
+        .into_model::<MembershipConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `film`.`title`, 
+  `film`.`rating` 
+FROM 
+  `film` 
+WHERE 
+  `film`.`rating` = 'G' 
+  OR `film`.`rating` = 'PG'
+```
+
+> **Note**
+>
+> ```rust
+> Condition::any()
+>     .add(film::Column::Rating.eq("G"))
+>     .add(film::Column::Rating.eq("PG")),
+> ```
+
+##### 1. 使用子查询
+
+要求： **只要是影片名包含字符串'PET'的电影都适合家庭成员共同观看，就可以对 film 数据表执行子查询，县检索与这些电影相关的评级，然后检索和这些评级对应的所有电影**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT title, rating
+ -> FROM film
+ -> WHERE rating IN (SELECT rating FROM film WHERE title LIKE '%PET%');
++---------------------------+--------+
+| title | rating |
++---------------------------+--------+
+| ACADEMY DINOSAUR | PG |
+| ACE GOLDFINGER | G |
+...
+| WORST BANGER | PG |
+| YOUNG LANGUAGE | G |
++---------------------------+--------+
+372 rows in set (0.00 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{film, prelude::*, sea_orm_active_enums::Rating};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::{Expr, Query},
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct MembershipConditionsRes {
+    title: String,
+    rating: Option<Rating>,
+}
+
+pub async fn membership_conditions_in(db: &DatabaseConnection) -> Result<()> {
+    let customer = Film::find()
+        .select_only()
+        .column(film::Column::Title)
+        .column(film::Column::Rating)
+        .filter(
+            Condition::any().add(
+                film::Column::Rating.in_subquery(
+                    Query::select()
+                        .column(film::Column::Rating)
+                        .and_where(Expr::col(film::Column::Title).like("%PET%"))
+                        .from(Film)
+                        .to_owned(),
+                ),
+            ),
+        )
+        .into_model::<MembershipConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `film`.`title`, 
+  `film`.`rating` 
+FROM 
+  `film` 
+WHERE 
+  `film`.`rating` IN (
+    SELECT 
+      `rating` 
+    FROM 
+      `film` 
+    WHERE 
+      `title` LIKE '%PET%'
+  )
+```
+
+> **Note**
+>
+> - `IN` 后跟 `SELECT` 语句
+>
+>   - ```rust
+>     .filter(
+>         Condition::any().add(
+>             film::Column::Rating.in_subquery(
+>                 Query::select()
+>                 .column(film::Column::Rating)
+>                 .and_where(Expr::col(film::Column::Title).like("%PET%"))
+>                 .from(Film)
+>                 .to_owned(),
+>             ),
+>         ),
+>     )
+>     ```
+
+要求： **有时候需要知道特定表达式是否存在于某个表达式集合中，而有时候又需要知道特定表达式是否不存在于某个表达式集合中。对此，可以使用 `NOT IN` 运算符**
+
+***SQL 语句***
+
+```bash
+SELECT title, rating
+FROM film
+WHERE rating NOT IN ('PG-13','R', 'NC-17');
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{film, prelude::*, sea_orm_active_enums::Rating};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::{Expr, Query},
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct MembershipConditionsRes {
+    title: String,
+    rating: Option<Rating>,
+}
+
+pub async fn membership_conditions_not_in(db: &DatabaseConnection) -> Result<()> {
+    let customer = Film::find()
+        .select_only()
+        .column(film::Column::Title)
+        .column(film::Column::Rating)
+        .filter(film::Column::Rating.is_not_in(["PG-13", "R", "NC-17"]))
+        .into_model::<MembershipConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `film`.`title`, 
+  `film`.`rating` 
+FROM 
+  `film` 
+WHERE 
+  `film`.`rating` NOT IN ('PG-13', 'R', 'NC-17')
+```
+
+> **Note**
+>
+> `IN` 和 `NOT IN` 后跟字符串
+>
+> `.filter(film::Column::Rating.is_not_in(["PG-13", "R", "NC-17"]))`
+
+
+
+#### 4.3.4 匹配条件
+
+##### `starts_with` `between` `like` `contains` `is_in`
+
+要求： **查找姓氏以 Q 开头的所有客户**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT last_name, first_name
+ -> FROM customer
+ -> WHERE left(last_name, 1) = 'Q';
++-------------+------------+
+| last_name | first_name |
++-------------+------------+
+| QUALLS | STEPHEN |
+| QUINTANILLA | ROGER |
+| QUIGLEY | TROY |
++-------------+------------+
+3 rows in set (0.00 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{customer, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct MatchingConditionsRes {
+    last_name: String,
+    first_name: String,
+}
+
+pub async fn matching_conditions(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::LastName)
+        .column(customer::Column::FirstName)
+        .filter(customer::Column::LastName.starts_with("Q"))
+        .into_model::<MatchingConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:#?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `customer`.`last_name`, 
+  `customer`.`first_name` 
+FROM 
+  `customer` 
+WHERE 
+  `customer`.`last_name` LIKE 'Q%'
+```
+
+> **Note**
+>
+> - `use sea_orm::ColumnTrait`
+> - `.filter(customer::Column::LastName.starts_with("Q"))`
+> - [ColumnTrait in sea_orm::entity::prelude - Rust (docs.rs)](https://docs.rs/sea-orm/0.9.1/sea_orm/entity/prelude/trait.ColumnTrait.html#method.starts_with)
+
+要求： **使用多个搜索表达式，查询搜索姓氏以 Q 或 Y 开头的所有客户**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT last_name, first_name
+ -> FROM customer
+ -> WHERE last_name LIKE 'Q%' OR last_name LIKE 'Y%';
++-------------+------------+
+| last_name | first_name |
++-------------+------------+
+| QUALLS | STEPHEN |
+| QUIGLEY | TROY |
+| QUINTANILLA | ROGER |
+| YANEZ | LUIS |
+| YEE | MARVIN |
+| YOUNG | CYNTHIA |
++-------------+------------+
+6 rows in set (0.00 sec)
+```
+
+***SeaORM***
+
+```rust
+let customer = Customer::find()
+    .select_only()
+    .column(customer::Column::LastName)
+    .column(customer::Column::FirstName)
+    .filter(
+        Condition::any()
+            .add(customer::Column::LastName.starts_with("Q"))
+            .add(customer::Column::LastName.starts_with("Y")),
+    )
+    .into_model::<MatchingConditionsRes>()
+    .all(db)
+    .await?;
+```
+
+```sql
+SELECT 
+  `customer`.`last_name`, 
+  `customer`.`first_name` 
+FROM 
+  `customer` 
+WHERE 
+  `customer`.`last_name` LIKE 'Q%' 
+  OR `customer`.`last_name` LIKE 'Y%'
+```
+
+> **Note**
+>
+> `.filter(
+>         Condition::any()
+>             .add(customer::Column::LastName.starts_with("Q"))
+>             .add(customer::Column::LastName.starts_with("Y")),
+>     )`
+
+##### 正则表达式
+
+要求： **如果通配符无法提供足够的灵活性，可以使用正则表达式来构建搜索表达式。**
+
+**搜索姓氏以 Q 或 Y 开头的所有客户**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT last_name, first_name
+ -> FROM customer
+ -> WHERE last_name REGEXP '^[QY]';
++-------------+------------+
+| last_name | first_name |
++-------------+------------+
+| YOUNG | CYNTHIA |
+| QUALLS | STEPHEN |
+| QUINTANILLA | ROGER |
+| YANEZ | LUIS |
+| YEE | MARVIN |
+| QUIGLEY | TROY |
++-------------+------------+
+6 rows in set (0.16 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{customer, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::Expr, ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult,
+    QueryFilter, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct MatchingConditionsRes {
+    last_name: String,
+    first_name: String,
+}
+
+pub async fn matching_conditions_regexp(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::LastName)
+        .column(customer::Column::FirstName)
+        .filter(Expr::cust(r#"`last_name` REGEXP '^[QY]'"#))
+        .into_model::<MatchingConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:#?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `customer`.`last_name`, 
+  `customer`.`first_name` 
+FROM 
+  `customer` 
+WHERE 
+  `last_name` REGEXP '^[QY]'
+```
+
+> **Note**
+>
+> 正则表达式：`.filter(Expr::cust(r#"last_name REGEXP '^[QY]'"#))`
+>
+> **pub fn [cust](https://docs.rs/sea-query/latest/sea_query/expr/struct.Expr.html#method.cust)(s: &[str](https://doc.rust-lang.org/nightly/std/primitive.str.html)) -> [SimpleExpr](https://docs.rs/sea-query/latest/sea_query/expr/enum.SimpleExpr.html)**
+
+
 
 ### 4.4 null:  4个字母的单词
 
+要求： **查询租借后从未归还的所有电影**
+
 ***SQL 语句***
 
+```bash
+mysql> SELECT rental_id, customer_id
+ -> FROM rental
+ -> WHERE return_date IS NULL;
++-----------+-------------+
+| rental_id | customer_id |
++-----------+-------------+
+| 11496 | 155 |
+| 11541 | 335 |
+| 11563 | 83 |
+| 11577 | 219 |
+| 11593 | 99 |
+...
+| 15867 | 505 |
+| 15875 | 41 |
+| 15894 | 168 |
+| 15966 | 374 |
++-----------+-------------+
+183 rows in set (0.01 sec)
+```
+
 ***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{prelude::*, rental};
+use anyhow::Result;
+use sea_orm::{
+    ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct NeverEqualNullRes {
+    rental_id: i32,
+    customer_id: u16,
+}
+pub async fn never_equal_null(db: &DatabaseConnection) -> Result<()> {
+    let rental = Rental::find()
+        .select_only()
+        .column(rental::Column::RentalId)
+        .column(rental::Column::CustomerId)
+        .filter(rental::Column::ReturnDate.is_null())
+        .into_model::<NeverEqualNullRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", rental);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `rental`.`rental_id`, 
+  `rental`.`customer_id` 
+FROM 
+  `rental` 
+WHERE 
+  `rental`.`return_date` IS NULL
+```
+
+> **Note**
+>
+> - 表达式可以为 `null` ，但是不能等于 `= null`
+> - 两个 `null` 值不想等
+
+要求： **查询返回 租借后已经归还的所有电影记录**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT rental_id, customer_id, return_date
+ -> FROM rental
+ -> WHERE return_date IS NOT NULL;
++-----------+-------------+---------------------+
+| rental_id | customer_id | return_date |
++-----------+-------------+---------------------+
+| 1 | 130 | 2005-05-26 22:04:30 |
+...
+| 16049 | 393 | 2005-08-30 01:01:12 |
++-----------+-------------+---------------------+
+15861 rows in set (0.02 sec)
+```
+
+***SeaORM***
+
+```sql
+SELECT 
+  `rental`.`rental_id`, 
+  `rental`.`customer_id` 
+FROM 
+  `rental` 
+WHERE 
+  `rental`.`return_date` IS NOT NULL
+```
+
+```rust
+Rental::find()
+    .select_only()
+    .column(rental::Column::RentalId)
+    .column(rental::Column::CustomerId)
+    .filter(rental::Column::ReturnDate.is_not_null())
+    .into_model::<NeverEqualNullRes>()
+    .all(db)
+    .await?;
+```
+
+> **Note**
+
+要求： **查找 2015 年 5 月至 8 月期间所有未归还电影的记录**
+
+- 62 条记录是在 5月至 8 月期间之外归还的
+- 还有 183 部从未归还的电影记录
+
+***SQL 语句***
+
+```bash
+mysql> SELECT rental_id, customer_id, return_date
+ -> FROM rental
+ -> WHERE return_date IS NULL
+ -> OR return_date NOT BETWEEN '2005-05-01' AND '2005-09-01';
++-----------+-------------+---------------------+
+| rental_id | customer_id | return_date |
++-----------+-------------+---------------------+
+| 11496 | 155 | NULL |
+...
+| 15942 | 210 | 2005-09-01 18:39:40 |
+| 15966 | 374 | NULL |
+| 16037 | 45 | 2005-09-01 02:48:04 |
+| 16040 | 195 | 2005-09-02 02:19:33 |
++-----------+-------------+---------------------+
+245 rows in set (0.01 sec)
+```
+
+***SeaORM***
+
+```sql
+SELECT 
+  `rental`.`rental_id`, 
+  `rental`.`customer_id` 
+FROM 
+  `rental` 
+WHERE 
+  `rental`.`return_date` IS NULL 
+  OR (
+    `rental`.`return_date` NOT BETWEEN '2005-05-01' 
+    AND '2005-09-01'
+  )
+```
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{prelude::*, rental};
+use anyhow::Result;
+use sea_orm::{
+    ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct NeverEqualNullRes {
+    rental_id: i32,
+    customer_id: u16,
+}
+pub async fn never_equal_null_or(db: &DatabaseConnection) -> Result<()> {
+    let rental = Rental::find()
+        .select_only()
+        .column(rental::Column::RentalId)
+        .column(rental::Column::CustomerId)
+        .filter(
+            Condition::any()
+                .add(rental::Column::ReturnDate.is_null())
+                .add(rental::Column::ReturnDate.not_between("2005-05-01", "2005-09-01")),
+        )
+        .into_model::<NeverEqualNullRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", rental);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> - `is_null()`
+> - `not_between()`
+
+
+
+要求： ****
+
+***SQL 语句***
+
+```bash
+
+```
+
+***SeaORM***
+
+```sql
+
+```
+
+```rust
+
+```
+
+> **Note**
+
