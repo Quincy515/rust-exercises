@@ -1,5 +1,6 @@
 mod ch3;
 mod ch4;
+mod ch5;
 
 pub mod entity;
 
@@ -22,7 +23,10 @@ async fn main() -> Result<()> {
         .max_lifetime(Duration::from_secs(8));
     let db = Database::connect(opt).await?;
 
-    ch4::ch4_4_1::never_equal_null_or(&db).await?;
+    ch5::ch5_2::joining_three_or_more_tables(&db).await?;
+    // ch5::ch5_1::inner_join_sql92(&db).await?;
+    // ch5::ch5_1::inner_join(&db).await?;
+    // ch4::ch4_4_1::never_equal_null_or(&db).await?;
     // ch4::ch4_4_1::never_equal_not_null(&db).await?;
     // ch4::ch4_4_1::never_equal_null(&db).await?;
     // ch4::ch4_3_4::matching_conditions_regexp(&db).await?;
