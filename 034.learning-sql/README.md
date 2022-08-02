@@ -47,8 +47,9 @@ SELECT `customer`.`first_name`, `customer`.`last_name` FROM `customer` WHERE `cu
 
 >**Note**
 >
->- eq
->- into_model
+>- `eq`
+>- `select_only` `column`
+>- `into_model::<CustomerRes>()`
 
 #### SQL 语句
 
@@ -90,7 +91,7 @@ SELECT `category`.`category_id`, `category`.`name`, `category`.`last_update` FRO
 
 
 
-### 3.3 SELECT 子句
+### 3.3 `SELECT` 子句
 
 #### SQL 语句
 
@@ -221,6 +222,12 @@ pub async fn get_language_column_as(db: &DatabaseConnection) -> Result<()> {
 SELECT `language`.`language_id`, `language`.`name` AS `language_name`, `language_id` * 3 AS `lang_pi_value` FROM `language`
 ```
 
+> **Note**
+>
+> - `Expr::col(language::Column::LanguageId).mul(3)`
+> - `select_only`
+> - `column_as`
+>
 > **Warning** 
 >
 > - u8 * 3.1415927 
@@ -314,11 +321,360 @@ pub async fn get_actor_id(db: &DatabaseConnection) -> Result<()> {
 SELECT `actor`.`actor_id` FROM `actor` ORDER BY `actor`.`actor_id` DESC
 ```
 
+> **Note**
+>
+> - `order_by`
+>
 > **Warning** 
 >
 > 在 `SELECT` 后面使用 `DISTINCT` 关键字来移除重复数据
 
-### 3.4 FROM 子句
+### 3.4 `FROM` 子句
+
+### 3.4.1 数据表
+
+#### SQL 语句
+
+```bash
+mysql> SELECT concat(cust.last_name, ', ', cust.first_name) full_name
+ -> FROM
+ -> (SELECT first_name, last_name, email
+ -> FROM customer
+ -> WHERE first_name = 'JESSIE'
+ -> ) cust;
++---------------+
+| full_name |
++---------------+
+| BANKS, JESSIE |
+| MILAM, JESSIE |
++---------------+
+2 rows in set (0.00 sec)
+```
+
+#### SeaORM
+
+> **Warning**
+>
+> - `concat()`
+> - subquery
+
+### 3.4.2 数据表链接
+
+#### SQL 语句
+
+```bash
+mysql> SELECT customer.first_name, customer.last_name,
+ -> time(rental.rental_date) rental_time
+ -> FROM customer
+ -> INNER JOIN rental
+ -> ON customer.customer_id = rental.customer_id
+ -> WHERE date(rental.rental_date) = '2005-06-14';
++------------+-----------+-------------+
+| first_name | last_name | rental_time |
++------------+-----------+-------------+
+| JEFFERY | PINSON | 22:53:33 |
+| ELMER | NOE | 22:55:13 |
+| MINNIE | ROMERO | 23:00:34 |
+| MIRIAM | MCKINNEY | 23:07:08 |
+| DANIEL | CABRAL | 23:09:38 |
+| TERRANCE | ROUSH | 23:12:46 |
+| JOYCE | EDWARDS | 23:16:26 |
+| GWENDOLYN | MAY | 23:16:27 |
+| CATHERINE | CAMPBELL | 23:17:03 |
+| MATTHEW | MAHAN | 23:25:58 |
+| HERMAN | DEVORE | 23:35:09 |
+| AMBER | DIXON | 23:42:56 |
+| TERRENCE | GUNDERSON | 23:47:35 |
+| SONIA | GREGORY | 23:50:11 |
+| CHARLES | KOWALSKI | 23:54:34 |
+| JEANETTE | GREENE | 23:54:46 |
++------------+-----------+-------------+
+16 rows in set (0.01 sec)
+```
+
+#### SeaORM
+
+```rust
+#[derive(Debug, FromQueryResult)]
+struct CustomerTableRes {
+    first_name: String,
+    last_name: String,
+    rental_time: DateTime,
+}
+pub async fn subquery_customer_table_link(db: &DatabaseConnection) -> Result<()> {
+    let customer =
+        Customer::find()
+            .select_only()
+            .column(customer::Column::FirstName)
+            .column(customer::Column::LastName)
+            .column_as(
+                Expr::tbl(Alias::new("rental"), rental::Column::RentalDate).into_simple_expr(),
+                "rental_time",
+            )
+            .inner_join(Rental)
+            .filter(Condition::all().add(
+                Expr::col(rental::Column::RentalDate).between::<_>("2005-06-14", "2005-06-16"),
+            ))
+            // .build(DbBackend::MySql)
+            // .to_string();
+            .into_model::<CustomerTableRes>()
+            .all(db)
+            .await?;
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+```sql
+SELECT 
+  `customer`.`first_name`, 
+  `customer`.`last_name`, 
+  `rental`.`rental_date` AS `rental_time` 
+FROM 
+  `customer` 
+  INNER JOIN `rental` ON `customer`.`customer_id` = `rental`.`customer_id` 
+WHERE 
+  `rental_date` BETWEEN '2005-06-14' 
+  AND '2005-06-16'
+```
+
+> **Note**
+>
+> - `Expr::tbl(Alias::new("rental"), rental::Column::RentalDate).into_simple_expr(),`
+> - `inner_join`
+> - `Condition::all().add()`
+> - `Expr::col(rental::Column::RentalDate).between::<_>("2005-06-14", "2005-06-16")`
+>
+> **Wraning**
+>
+> - Built in function `date()` `time()` `upper()`
+> - `columns([])`
+> - `from()` `in_subquery()`
+
+### 3.5 `WHERE` 子句
+
+#### SQL 语句
+
+```bash
+mysql> SELECT title
+ -> FROM film
+ -> WHERE rating = 'G' AND rental_duration >= 7;
++-------------------------+
+| title |
++-------------------------+
+| BLANKET BEVERLY |
+| BORROWERS BEDAZZLED |
+| BRIDE INTRIGUE |
+| CATCH AMISTAD |
+| CITIZEN SHREK |
+| COLDBLOODED DARLING |
+| CONTROL ANTHEM |
+| CRUELTY UNFORGIVEN |
+| DARN FORRESTER |
+| DESPERATE TRAINSPOTTING |
+| DIARY PANIC |
+| DRACULA CRYSTAL |
+| EMPIRE MALKOVICH |
+| FIREHOUSE VIETNAM |
+| GILBERT PELICAN |
+| GRADUATE LORD |
+| GREASE YOUTH |
+| GUN BONNIE |
+| HOOK CHARIOTS |
+| MARRIED GO |
+| MENAGERIE RUSHMORE |
+| MUSCLE BRIGHT |
+| OPERATION OPERATION |
+| PRIMARY GLASS |
+| REBEL AIRPORT |
+| SPIKING ELEMENT |
+| TRUMAN CRAZY |
+| WAKE JAWS |
+| WAR NOTTING |
++-------------------------+
+29 rows in set (0.00 sec)
+```
+
+
+
+#### SeaORM
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{film, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::Expr, Condition, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct RatingFilmRes {
+    title: String,
+}
+
+pub async fn get_rating_film_where(db: &DatabaseConnection) -> Result<()> {
+    let rating = Film::find()
+        .select_only()
+        .column(film::Column::Title)
+        .filter(
+            Condition::all()
+                .add(Expr::col(film::Column::Rating).eq("G"))
+                .add(Expr::col(film::Column::RentalDuration).gte(7)),
+        )
+        .into_model::<RatingFilmRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", rating);
+    Ok(())
+}
+```
+
+`AND` `Condition::all()`
+
+```sql
+SELECT 
+  `film`.`title` 
+FROM 
+  `film` 
+WHERE 
+  `rating` = 'G' 
+  AND `rental_duration` >= 7
+```
+
+`OR` `Condition::any()`
+
+```bash
+mysql> SELECT title
+ -> FROM film
+ -> WHERE rating = 'G' OR rental_duration >= 7;
++---------------------------+
+| title |
++---------------------------+
+| ACE GOLDFINGER |
+| ADAPTATION HOLES |
+| AFFAIR PREJUDICE |
+| AFRICAN EGG |
+| ALAMO VIDEOTAPE |
+| AMISTAD MIDSUMMER |
+| ANGELS LIFE |
+| ANNIE IDENTITY |
+|... |
+| WATERSHIP FRONTIER |
+| WEREWOLF LOLA |
+| WEST LION |
+| WESTWARD SEABISCUIT |
+| WOLVES DESIRE |
+| WON DARES |
+| WORKER TARZAN |
+| YOUNG LANGUAGE |
++---------------------------+
+340 rows in set (0.00 sec)
+```
+
+多个查询条件，比如在 `where` 子句中同时使用运算符 `and` 和 `or`
+
+#### SQL 语句
+
+```bash
+mysql> SELECT title, rating, rental_duration
+ -> FROM film
+ -> WHERE (rating = 'G' AND rental_duration >= 7)
+ -> OR (rating = 'PG-13' AND rental_duration < 4);
+The where Clause | 59
++-------------------------+--------+-----------------+
+| title | rating | rental_duration |
++-------------------------+--------+-----------------+
+| ALABAMA DEVIL | PG-13 | 3 |
+| BACKLASH UNDEFEATED | PG-13 | 3 |
+| BILKO ANONYMOUS | PG-13 | 3 |
+| BLANKET BEVERLY | G | 7 |
+| BORROWERS BEDAZZLED | G | 7 |
+| BRIDE INTRIGUE | G | 7 |
+| CASPER DRAGONFLY | PG-13 | 3 |
+| CATCH AMISTAD | G | 7 |
+| CITIZEN SHREK | G | 7 |
+| COLDBLOODED DARLING | G | 7 |
+|... |
+| TREASURE COMMAND | PG-13 | 3 |
+| TRUMAN CRAZY | G | 7 |
+| WAIT CIDER | PG-13 | 3 |
+| WAKE JAWS | G | 7 |
+| WAR NOTTING | G | 7 |
+| WORLD LEATHERNECKS | PG-13 | 3 |
++-------------------------+--------+-----------------+
+68 rows in set (0.00 sec)
+```
+
+#### 
+
+#### SeaORM
+
+```rust
+#[derive(Debug, FromQueryResult)]
+struct RatingFilmAndOrRes {
+    title: String,
+    rating: Option<Rating>,
+    rental_duration: u8,
+}
+
+pub async fn get_rating_film_mul_where(db: &DatabaseConnection) -> Result<()> {
+    let rating = Film::find()
+        .select_only()
+        .column(film::Column::Title)
+        .column(film::Column::Rating)
+        .column(film::Column::RentalDuration)
+        .filter(
+            Condition::any()
+                .add(
+                    Condition::all()
+                        .add(Expr::col(film::Column::Rating).eq("G"))
+                        .add(Expr::col(film::Column::RentalDuration).gte(7)),
+                )
+                .add(
+                    Condition::all()
+                        .add(Expr::col(film::Column::Rating).eq("PG-13"))
+                        .add(Expr::col(film::Column::RentalDuration).lt(4)),
+                ),
+        )
+        .into_model::<RatingFilmAndOrRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", rating);
+    Ok(())
+}
+
+```
+
+```sql
+SELECT 
+  `film`.`title`, 
+  `film`.`rating`, 
+  `film`.`rental_duration` 
+FROM 
+  `film` 
+WHERE 
+  (
+    `rating` = 'G' 
+    AND `rental_duration` >= 7
+  ) 
+  OR (
+    `rating` = 'PG-13' 
+    AND `rental_duration` < 4
+  )
+```
+
+
+
+### 3.1 查询机制
+
+#### SQL 语句
+
+#### SeaORM
+
+
+
+### 3.1 查询机制
 
 #### SQL 语句
 

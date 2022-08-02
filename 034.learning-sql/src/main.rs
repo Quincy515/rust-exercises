@@ -20,11 +20,15 @@ async fn main() -> Result<()> {
         .max_lifetime(Duration::from_secs(8));
     let db = Database::connect(opt).await?;
 
-    // ch3::ch3_1::get_category_list(&db).await?;
-    // ch3::ch3_3::get_language_list(&db).await?;
-    // ch3::ch3_3::get_language_column(&db).await?;
+    ch3::ch3_5::get_rating_film_mul_where(&db).await?;
+    // ch3::ch3_5::get_rating_film_where(&db).await?;
+    // ch3::ch3_4::subquery_customer_table_link(&db).await?;
+    // ch3::ch3_4::subquery_customer_list(&db).await?;
+    // ch3::ch3_3::get_actor_id(&db).await?;
     // ch3::ch3_3::get_language_column_as(&db).await?;
-    ch3::ch3_3::get_actor_id(&db).await?;
+    // ch3::ch3_3::get_language_column(&db).await?;
+    // ch3::ch3_3::get_language_list(&db).await?;
+    // ch3::ch3_1::get_category_list(&db).await?;
 
     Ok(())
 }
