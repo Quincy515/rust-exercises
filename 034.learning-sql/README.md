@@ -1843,6 +1843,242 @@ pub async fn never_equal_null_or(db: &DatabaseConnection) -> Result<()> {
 > - `is_null()`
 > - `not_between()`
 
+### 5.1.2 内链接
+
+要求： **查询检索客户的姓氏和名字，以及居住的街道地址**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT c.first_name, c.last_name, a.address
+ -> FROM customer c JOIN address a
+ -> ON c.address_id = a.address_id;
++-------------+--------------+----------------------------------------+
+| first_name | last_name | address |
++-------------+--------------+----------------------------------------+
+| MARY | SMITH | 1913 Hanoi Way |
+...
+| AUSTIN | CINTRON | 1325 Fukuyama Street |
++-------------+--------------+----------------------------------------+
+599 rows in set (0.00 sec)
+```
+
+***SeaORM***
+
+```sql
+SELECT 
+  `customer`.`first_name`, 
+  `customer`.`last_name`, 
+  `address`.`address` AS `address` 
+FROM 
+  `customer` 
+  INNER JOIN `address` ON `customer`.`address_id` = `address`.`address_id`
+```
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{address, customer, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::{Alias, Expr},
+    DatabaseConnection, EntityTrait, FromQueryResult, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct CustomerRes {
+    first_name: String,
+    last_name: String,
+    address: String,
+}
+
+pub async fn inner_join(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::FirstName)
+        .column(customer::Column::LastName)
+        .column_as(
+            Expr::tbl(Alias::new("address"), address::Column::Address).into_simple_expr(),
+            "address",
+        )
+        .inner_join(Address)
+        .into_model::<CustomerRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> SQL92 内链接语法与之前旧的连接语法
+>
+> ```sql
+> SELECT c.first_name, c.last_name, a.address
+> FROM customer c
+>          INNER JOIN address a
+>                     ON c.address_id = a.address_id;
+> ```
+>
+> ```sql
+> SELECT c.first_name, c.last_name, a.address
+> FROM customer c,
+>      address a
+> WHERE c.address_id = a.address_id;
+> ```
+
+SQL92 语法的优势在于更易于识别同时包含连接和过滤条件的复杂查询
+
+要求： **查询返回邮政编码为 52137 的客户**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT c.first_name, c.last_name, a.address
+ -> FROM customer c, address a
+ -> WHERE c.address_id = a.address_id
+ -> AND a.postal_code = 52137;
++------------+-----------+------------------------+
+| first_name | last_name | address |
++------------+-----------+------------------------+
+| JAMES | GANNON | 1635 Kuwana Boulevard |
+| FREDDIE | DUGGAN | 1103 Quilmes Boulevard |
++------------+-----------+------------------------+
+2 rows in set (0.01 sec)
+```
+
+```bash
+mysql> SELECT c.first_name, c.last_name, a.address
+ -> FROM customer c INNER JOIN address a
+ -> ON c.address_id = a.address_id
+ -> WHERE a.postal_code = 52137;
++------------+-----------+------------------------+
+| first_name | last_name | address |
++------------+-----------+------------------------+
+| JAMES | GANNON | 1635 Kuwana Boulevard |
+| FREDDIE | DUGGAN | 1103 Quilmes Boulevard |
++------------+-----------+------------------------+
+2 rows in set (0.00 sec)
+```
+
+***SeaORM***
+
+```sql
+SELECT `customer`.`first_name`, `customer`.`last_name`, `address`.`address`
+FROM `customer`
+         INNER JOIN `address` ON `customer`.`address_id` = `address`.`address_id`
+WHERE `address`.`postal_code` = 52137;
+```
+
+```rust
+pub async fn inner_join_sql92(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::FirstName)
+        .column(customer::Column::LastName)
+        .column(address::Column::Address)
+        // .column_as(
+        //     Expr::tbl(Alias::new("address"), address::Column::Address).into_simple_expr(),
+        //     "address",
+        // )
+        .inner_join(Address)
+        .filter(address::Column::PostalCode.eq(52137))
+        .into_model::<CustomerRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+### 5.2 连接 3 个或以上的数据表
+
+要求： **查询返回客户所在的城市，而不再返回街道地址**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT c.first_name, c.last_name, ct.city
+ -> FROM customer c
+ -> INNER JOIN address a
+ -> ON c.address_id = a.address_id
+ -> INNER JOIN city ct
+ -> ON a.city_id = ct.city_id;
++-------------+--------------+----------------------------+
+| first_name | last_name | city |
++-------------+--------------+----------------------------+
+| JULIE | SANCHEZ | A Corua (La Corua) |
+...
+| RONNIE | RICKETTS | Ziguinchor |
++-------------+--------------+----------------------------+
+599 rows in set (0.03 sec)
+```
+
+***SeaORM***
+
+```sql
+SELECT `customer`.`first_name`, `customer`.`last_name`, `address`.`address`
+FROM `customer`
+         INNER JOIN `address` ON `address`.`address_id` = `customer`.`address_id`
+         INNER JOIN `city` ON `city`.`city_id` = `address`.`city_id`;
+```
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{address, city, customer, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    DatabaseConnection, EntityTrait, FromQueryResult, JoinType, QuerySelect, RelationTrait,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct CustomerRes {
+    first_name: String,
+    last_name: String,
+    address: String,
+}
+
+pub async fn joining_three_or_more_tables(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::FirstName)
+        .column(customer::Column::LastName)
+        .column(address::Column::Address)
+        .join_rev(JoinType::InnerJoin, address::Relation::Customer.def())
+        .join_rev(JoinType::InnerJoin, city::Relation::Address.def())
+        .into_model::<CustomerRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> - `inner_join()` `join_rev()` `join()`
+
+```sql
+SELECT `customer`.`first_name`, `customer`.`last_name`, `address`.`address`
+FROM `customer`
+         INNER JOIN `address` ON `customer`.`address_id` = `address`.`address_id`
+         INNER JOIN `city` ON `address`.`city_id` = `city`.`city_id`;
+```
+
+```rust
+Customer::find()
+    .select_only()
+    .column(customer::Column::FirstName)
+    .column(customer::Column::LastName)
+    .column(address::Column::Address)
+    .inner_join(Address)
+    .join(JoinType::InnerJoin, address::Relation::City.def())
+    .into_model::<CustomerRes>()
+    .all(db)
+    .await?;
+```
+
 
 
 要求： ****
@@ -1864,4 +2100,6 @@ pub async fn never_equal_null_or(db: &DatabaseConnection) -> Result<()> {
 ```
 
 > **Note**
+
+
 
