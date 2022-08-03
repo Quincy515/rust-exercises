@@ -2,6 +2,7 @@ mod ch3;
 mod ch4;
 mod ch5;
 
+pub mod ch6;
 pub mod entity;
 
 use anyhow::Result;
@@ -23,7 +24,8 @@ async fn main() -> Result<()> {
         .max_lifetime(Duration::from_secs(8));
     let db = Database::connect(opt).await?;
 
-    ch5::ch5_2::joining_three_or_more_tables(&db).await?;
+    ch6::ch6_3_1::union_all(&db).await?;
+    // ch5::ch5_2::joining_three_or_more_tables(&db).await?;
     // ch5::ch5_1::inner_join_sql92(&db).await?;
     // ch5::ch5_1::inner_join(&db).await?;
     // ch4::ch4_4_1::never_equal_null_or(&db).await?;

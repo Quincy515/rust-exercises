@@ -2079,27 +2079,84 @@ Customer::find()
     .await?;
 ```
 
+### 6.3.1 `UNION` 运算符
 
-
-要求： ****
+要求： **从 customer 和 actor 表中获取所有名字和姓氏的集合**
 
 ***SQL 语句***
 
 ```bash
-
+mysql> SELECT 'CUST' typ, c.first_name, c.last_name
+ -> FROM customer c
+ -> UNION ALL
+ -> SELECT 'ACTR' typ, a.first_name, a.last_name
+ -> FROM actor a;
++------+------------+-------------+
+| typ | first_name | last_name |
++------+------------+-------------+
+| CUST | MARY | SMITH |
+...
+| ACTR | THORA | TEMPLE |
++------+------------+-------------+
+799 rows in set (0.00 sec)
 ```
 
 ***SeaORM***
 
 ```sql
-
+SELECT `customer`.`first_name`, `customer`.`last_name`
+FROM `customer`
+UNION ALL
+SELECT `first_name`, `last_name`
+FROM `actor`;
 ```
 
 ```rust
+#![allow(dead_code)]
+use crate::entity::{actor, customer, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::{MysqlQueryBuilder, Query, UnionType},
+    DatabaseConnection, EntityTrait, FromQueryResult, QuerySelect, QueryTrait,
+};
 
+#[derive(Debug, FromQueryResult)]
+struct CustomerRes {
+    first_name: String,
+    last_name: String,
+}
+pub async fn union_all(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::FirstName)
+        .column(customer::Column::LastName)
+        .into_query()
+        .union(
+            UnionType::All,
+            Query::select()
+                .columns([actor::Column::FirstName, actor::Column::LastName])
+                .from(Actor)
+                .to_owned(),
+        )
+        .to_owned()
+        .to_string(MysqlQueryBuilder);
+    // .into_model::<CustomerRes>()
+    // .all(db)
+    // .await?;
+    println!("{:?}", customer);
+    Ok(())
+}
 ```
 
-> **Note**
+***还不会使用***
+
+> **Warning**
+>
+> `sea-orm` 和 `sea_query` 的集合使用 
+>
+> [SelectStatement in sea_query::query - Rust (docs.rs)](https://docs.rs/sea-query/0.26.2/sea_query/query/struct.SelectStatement.html#examples-15)
+>
+> [SelectStatement in sea_query::query - Rust (docs.rs)](https://docs.rs/sea-query/0.26.2/sea_query/query/struct.SelectStatement.html#method.union)
 
 
 
