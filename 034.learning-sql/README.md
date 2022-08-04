@@ -22,11 +22,17 @@
 - [5.1.2 内链接](#512-内链接)
 - [5.2 连接 3 个或以上的数据表](#52-连接-3-个或以上的数据表)
 - [6.3.1 `UNION` 运算符](#631-union-运算符)
-- [8.1 分组概念](#81-分组概念)
-- [8.2 聚合函数](#82-聚合函数)
+- [8.1 分组概念 `GROUP_BY()` `HAVING()`](#81-分组概念-group_by-having)
+- [8.2 聚合函数 `MAX()` `MIN()` `SUM()` `COUNT()`](#82-聚合函数-max-min-sum-count)
   - [8.2.1 显示分组](#821-显示分组)
-  - [8.2.2　统计不同的值](#822统计不同的值)
-  - [8.2.3　使用表达式](#823使用表达式)
+  - [8.2.2　统计不同的值 `COUNT(DISTINCT customer_id) num_customers`](#822统计不同的值-countdistinct-customer_id-num_customers)
+  - [8.2.3　使用表达式 `datediff(return_date,rental_date)`](#823使用表达式-datediffreturn_daterental_date)
+- [8.3　生成分组](#83生成分组)
+  - [8.3.1　单列分组](#831单列分组)
+  - [8.3.2　多列分组](#832多列分组)
+  - [8.3.3　通过表达式分组 `extract(YEAR FROM rental_date)`](#833通过表达式分组-extractyear-from-rental_date)
+  - [8.3.4　生成汇总 `with rollup`](#834生成汇总-with-rollup)
+- [8.4　分组过滤条件](#84分组过滤条件)
 
 ```bash
 sea-orm-cli generate entity -v -u mysql://root:root1234@127.0.0.1:3306/sakila -o src/entity -t actor,category  --with-serde both
@@ -2212,7 +2218,7 @@ pub async fn union_all(db: &DatabaseConnection) -> Result<()> {
 >
 > [SelectStatement in sea_query::query - Rust (docs.rs)](https://docs.rs/sea-query/0.26.2/sea_query/query/struct.SelectStatement.html#method.union)
 
-### 8.1 分组概念
+### 8.1 分组概念 `GROUP_BY()` `HAVING()`
 
 要求： **每位客户租借了多少部电影**
 
@@ -2390,7 +2396,7 @@ pub async fn group_by_order_by_having(db: &DatabaseConnection) -> Result<()> {
 >
 > - `HAVING()`
 
-### 8.2 聚合函数
+### 8.2 聚合函数 `MAX()` `MIN()` `SUM()` `COUNT()`
 
 要求： **常见的聚合函数来分析电影租借付款数据**
 
@@ -2542,7 +2548,7 @@ pub async fn aggregate_functions_customer(db: &DatabaseConnection) -> Result<()>
 >
 > - 怎么嵌套结构体
 
-#### 8.2.2　统计不同的值
+#### 8.2.2　统计不同的值 `COUNT(DISTINCT customer_id) num_customers`
 
 要求： **count()函数检查分组中每个成员的列值，以便查找和删除重复项，而不是简单地计算分组中值的数量。**
 
@@ -2592,7 +2598,7 @@ async fn counting_distinct_values(db: &DatabaseConnection) -> Result<()> {
 >
 > 不知如何在 `sea_orm` 中结合使用 `sea_query`
 
-#### 8.2.3　使用表达式
+#### 8.2.3　使用表达式 `datediff(return_date,rental_date)`
 
 要求： **找出一部电影从被租借到后来归还之间相隔的最大天数**
 
@@ -2661,6 +2667,425 @@ pub async fn using_expressions(db: &DatabaseConnection) -> Result<()> {
 >                 Expr::col(rental::Column::ReturnDate),
 >                 Expr::col(rental::Column::RentalDate),
 >             ]))`
+
+### 8.3　生成分组
+
+#### 8.3.1　单列分组
+
+要求： **查找某位演员参演的电影数量**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT actor_id, count(*)
+ -> FROM film_actor
+ -> GROUP BY actor_id;
++----------+----------+
+| actor_id | count(*) |
++----------+----------+
+| 1 | 19 |
+...
+| 200 | 20 |
++----------+----------+
+200 rows in set (0.11 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{film_actor, prelude::*};
+use anyhow::Result;
+use sea_orm::{sea_query::Expr, DatabaseConnection, EntityTrait, FromQueryResult, QuerySelect};
+
+#[derive(Debug, FromQueryResult)]
+struct SingleColumnGroupingRes {
+    actor_id: u16,
+    count: i32,
+}
+
+/// 要求： **查找某位演员参演的电影数量**
+/// ```
+/// SELECT
+///   `film_actor`.`actor_id`,
+///   COUNT(*) AS `count`
+/// FROM
+///   `film_actor`
+/// GROUP BY
+///   `film_actor`.`actor_id`
+/// ```
+pub async fn single_column_grouping(db: &DatabaseConnection) -> Result<()> {
+    let res = FilmActor::find()
+        .select_only()
+        .column(film_actor::Column::ActorId)
+        .column_as(Expr::asterisk().count(), "count")
+        .group_by(film_actor::Column::ActorId)
+        .into_model::<SingleColumnGroupingRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", res);
+    Ok(())
+}
+```
+
+#### 8.3.2　多列分组
+
+要求： **找出每位演员参演的各种分级电影（G、PG...）的数量**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT fa.actor_id, f.rating, count(*)
+ -> FROM film_actor fa
+ -> INNER JOIN film f
+ -> ON fa.film_id = f.film_id
+ -> GROUP BY fa.actor_id, f.rating
+ -> ORDER BY 1,2;
++----------+--------+----------+
+| actor_id | rating | count(*) |
++----------+--------+----------+
+| 1 | G | 4 |
+...
+| 200 | NC-17 | 4 |
++----------+--------+----------+
+996 rows in set (0.01 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{film, film_actor, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::Expr, DatabaseConnection, EntityTrait, FromQueryResult, QueryOrder, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct MulticolumnGroupingRes {
+    actor_id: u16,
+    count: i32,
+}
+
+/// 要求： **找出每位演员参演的各种分级电影（G、PG...）的数量**
+/// ```
+/// SELECT
+///   `film_actor`.`actor_id`,
+///   `film`.`rating`,
+///   COUNT(*) AS `count`
+/// FROM
+///   `film_actor`
+///   INNER JOIN `film` ON `film_actor`.`film_id` = `film`.`film_id`
+/// GROUP BY
+///   `film_actor`.`actor_id`,
+///   `film`.`rating`
+/// ORDER BY
+///   `film_actor`.`actor_id` ASC,
+///   `film`.`rating` ASC
+/// ```
+pub async fn multicolumn_grouping(db: &DatabaseConnection) -> Result<()> {
+    let res = FilmActor::find()
+        .select_only()
+        .column(film_actor::Column::ActorId)
+        .column(film::Column::Rating)
+        .column_as(Expr::asterisk().count(), "count")
+        .inner_join(Film)
+        .group_by(film_actor::Column::ActorId)
+        .group_by(film::Column::Rating)
+        .order_by_asc(film_actor::Column::ActorId)
+        .order_by_asc(film::Column::Rating)
+        .into_model::<MulticolumnGroupingRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", res);
+    Ok(())
+}
+```
+
+#### 8.3.3　通过表达式分组 `extract(YEAR FROM rental_date)`
+
+要求： **查询按年份对租借数据进行分组**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT extract(YEAR FROM rental_date) year,
+ -> COUNT(*) how_many
+ -> FROM rental
+ -> GROUP BY extract(YEAR FROM rental_date);
++------+----------+
+| year | how_many |
++------+----------+
+| 2005 | 15862 |
+| 2006 | 182 |
++------+----------+
+2 rows in set (0.01 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{prelude::*, rental};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::{Expr, Func, Iden},
+    DatabaseConnection, EntityTrait, FromQueryResult, QueryOrder, QuerySelect,
+};
+
+struct Extract;
+
+impl Iden for Extract {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "extract").unwrap();
+    }
+}
+
+#[derive(Debug, FromQueryResult)]
+struct GroupingViaExpressionsRes {
+    year: i32,
+    how_many: i32,
+}
+/// 要求： **查询按年份对租借数据进行分组**
+/// ```
+/// SELECT
+///   extract(
+///       YEAR
+///       FROM
+///     `rental_date`
+///   ) AS `year`,
+///   COUNT(*) AS `how_many`
+/// FROM
+///   `rental`
+/// GROUP BY
+///   extract(
+///      YEAR
+///      FROM FROM
+///     `rental_date`
+///   )
+/// ```
+pub async fn grouping_via_expressions(db: &DatabaseConnection) -> Result<()> {
+    let res = Rental::find()
+        .select_only()
+        .column_as(
+            Func::cust(Extract).args(vec![
+                Expr::expr(Expr::cust("YEAR FROM `rental_date`")),
+                // Expr::col(rental::Column::RentalDate),
+            ]),
+            "year",
+        )
+        .column_as(Expr::asterisk().count(), "how_many")
+        .group_by(Func::cust(Extract).args(vec![
+            Expr::expr(Expr::cust("YEAR FROM `rental_date`")),
+            // Expr::col(rental::Column::RentalDate),
+        ]))
+        .into_model::<GroupingViaExpressionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", res);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> - `extract(YEAR FROM rental_date)`
+>
+> **Warning**
+>
+> 不会构造复杂的函数
+
+#### 8.3.4　生成汇总 `with rollup`
+
+要求： ****
+
+***SQL 语句***
+
+```bash
+mysql> SELECT fa.actor_id, f.rating, count(*)
+ -> FROM film_actor fa
+ -> INNER JOIN film f
+ -> ON fa.film_id = f.film_id
+ -> GROUP BY fa.actor_id, f.rating WITH ROLLUP
+ -> ORDER BY 1,2;
++----------+--------+----------+
+| actor_id | rating | count(*) |
++----------+--------+----------+
+| NULL | NULL | 5462 |
+| 1 | NULL | 19 |
+| 1 | G | 4 |
+| 1 | PG | 6 |
+| 1 | PG-13 | 1 |
+| 1 | R | 3 |
+| 1 | NC-17 | 5 |
+| 2 | NULL | 25 |
+| 2 | G | 7 |
+Generating Groups | 157
+| 2 | PG | 6 |
+| 2 | PG-13 | 2 |
+| 2 | R | 2 |
+| 2 | NC-17 | 8 |
+...
+| 199 | NULL | 15 |
+| 199 | G | 3 |
+| 199 | PG | 4 |
+| 199 | PG-13 | 4 |
+| 199 | R | 2 |
+| 199 | NC-17 | 2 |
+| 200 | NULL | 20 |
+| 200 | G | 5 |
+| 200 | PG | 3 |
+| 200 | PG-13 | 2 |
+| 200 | R | 6 |
+| 200 | NC-17 | 4 |
++----------+--------+----------+
+1197 rows in set (0.07 sec)
+```
+
+***SeaORM***
+
+```rust
+
+```
+
+> **Warning**
+>
+> 在 `group by`子句中使用了`with rollup`选项，来生成汇总。
+> 没有找到在 `sea-orm` 中如何使用
+
+### 8.4　分组过滤条件
+
+要求： **前者过滤掉评级不为G或PG的电影，后者过滤掉参演电影数少于10部的演员。**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT fa.actor_id, f.rating, count(*)
+ -> FROM film_actor fa
+ -> INNER JOIN film f
+ -> ON fa.film_id = f.film_id
+ -> WHERE f.rating IN ('G','PG')
+ -> GROUP BY fa.actor_id, f.rating
+ -> HAVING count(*) > 9;
++----------+--------+----------+
+| actor_id | rating | count(*) |
++----------+--------+----------+
+| 137 | PG | 10 |
+| 37 | PG | 12 |
+| 180 | PG | 12 |
+| 7 | G | 10 |
+| 83 | G | 14 |
+| 129 | G | 12 |
+| 111 | PG | 15 |
+| 44 | PG | 12 |
+| 26 | PG | 11 |
+| 92 | PG | 12 |
+| 17 | G | 12 |
+| 158 | PG | 10 |
+| 147 | PG | 10 |
+| 14 | G | 10 |
+| 102 | PG | 11 |
+| 133 | PG | 10 |
++----------+--------+----------+
+16 rows in set (0.01 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{film, film_actor, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::Expr, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct GroupFilterConditionsRes {
+    actor_id: u16,
+    rating: String,
+    count: i32,
+}
+/// 要求： 评级为G或PG的电影并且参演电影数大于等于10部的演员。
+/// ```
+/// SELECT
+///   `film_actor`.`actor_id`,
+///   `film`.`rating`,
+///   COUNT(*) AS `count`
+/// FROM
+///   `film_actor`
+///   INNER JOIN `film` ON `film_actor`.`film_id` = `film`.`film_id`
+/// WHERE
+///   `film`.`rating` IN ('G', 'PG')
+/// GROUP BY
+///   `film_actor`.`actor_id`,
+///   `film`.`rating`
+/// HAVING
+///   COUNT(*) > 9
+/// ```
+pub async fn group_filter_conditions(db: &DatabaseConnection) -> Result<()> {
+    let customer = FilmActor::find()
+        .select_only()
+        .column(film_actor::Column::ActorId)
+        .column(film::Column::Rating)
+        .column_as(Expr::asterisk().count(), "count")
+        .inner_join(Film)
+        .filter(film::Column::Rating.is_in(["G", "PG"]))
+        .group_by(film_actor::Column::ActorId)
+        .group_by(film::Column::Rating)
+        .having(Expr::expr(Expr::asterisk().count()).gt(9))
+        .into_model::<GroupFilterConditionsRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> - `is_in()`
+
+
+
+要求： ****
+
+***SQL 语句***
+
+```bash
+
+```
+
+***SeaORM***
+
+```rust
+
+```
+
+> **Note**
+
+
+
+要求： ****
+
+***SQL 语句***
+
+```bash
+
+```
+
+***SeaORM***
+
+```rust
+
+```
+
+> **Note**
 
 
 

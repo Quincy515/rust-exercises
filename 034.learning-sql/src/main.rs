@@ -25,7 +25,11 @@ async fn main() -> Result<()> {
         .max_lifetime(Duration::from_secs(8));
     let db = Database::connect(opt).await?;
 
-    ch8::ch8_2::using_expressions(&db).await?;
+    ch8::ch8_4::group_filter_conditions(&db).await?;
+    // ch8::ch8_3_3::grouping_via_expressions(&db).await?;
+    // ch8::ch8_3_2::multicolumn_grouping(&db).await?;
+    // ch8::ch8_3_1::single_column_grouping(&db).await?;
+    // ch8::ch8_2::using_expressions(&db).await?;
     // ch8::ch8_2::aggregate_functions_customer(&db).await?;
     // ch8::ch8_2::aggregate_functions(&db).await?;
     // ch8::ch8_1::group_by_order_by_having(&db).await?;
