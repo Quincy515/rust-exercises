@@ -3,6 +3,7 @@ mod ch4;
 mod ch5;
 
 pub mod ch6;
+pub mod ch8;
 pub mod entity;
 
 use anyhow::Result;
@@ -24,7 +25,13 @@ async fn main() -> Result<()> {
         .max_lifetime(Duration::from_secs(8));
     let db = Database::connect(opt).await?;
 
-    ch6::ch6_3_1::union_all(&db).await?;
+    ch8::ch8_2::using_expressions(&db).await?;
+    // ch8::ch8_2::aggregate_functions_customer(&db).await?;
+    // ch8::ch8_2::aggregate_functions(&db).await?;
+    // ch8::ch8_1::group_by_order_by_having(&db).await?;
+    // ch8::ch8_1_1::group_by_order_by(&db).await?;
+    // ch8::ch8_1_1::group_by(&db).await?;
+    // ch6::ch6_3_1::union_all(&db).await?;
     // ch5::ch5_3::self_join(&db).await?;
     // ch5::ch5_2::same_table_twice_referring(&db).await?;
     // ch5::ch5_2::same_table_twice(&db).await?;

@@ -1,12 +1,9 @@
-use crate::{
-    ch5::ch5_1::inner_join,
-    entity::{address, film, prelude::*},
-};
+#![allow(dead_code)]
+use crate::entity::{address, prelude::*};
 use anyhow::Result;
 use sea_orm::{
     sea_query::{Alias, Expr},
-    ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult, JoinType,
-    QueryFilter, QuerySelect,
+    DatabaseConnection, EntityTrait, FromQueryResult, JoinType, QuerySelect,
 };
 
 #[derive(Debug, FromQueryResult)]

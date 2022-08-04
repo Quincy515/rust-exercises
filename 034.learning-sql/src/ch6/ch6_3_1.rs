@@ -11,7 +11,7 @@ struct CustomerRes {
     first_name: String,
     last_name: String,
 }
-pub async fn union_all(db: &DatabaseConnection) -> Result<()> {
+pub async fn union_all(_db: &DatabaseConnection) -> Result<()> {
     let customer = Customer::find()
         .select_only()
         .column(customer::Column::FirstName)

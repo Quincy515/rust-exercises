@@ -19,6 +19,14 @@
     - [`starts_with` `between` `like` `contains` `is_in`](#starts_with-between-like-contains-is_in)
     - [正则表达式](#正则表达式)
 - [4.4 null:  4个字母的单词](#44-null--4个字母的单词)
+- [5.1.2 内链接](#512-内链接)
+- [5.2 连接 3 个或以上的数据表](#52-连接-3-个或以上的数据表)
+- [6.3.1 `UNION` 运算符](#631-union-运算符)
+- [8.1 分组概念](#81-分组概念)
+- [8.2 聚合函数](#82-聚合函数)
+  - [8.2.1 显示分组](#821-显示分组)
+  - [8.2.2　统计不同的值](#822统计不同的值)
+  - [8.2.3　使用表达式](#823使用表达式)
 
 ```bash
 sea-orm-cli generate entity -v -u mysql://root:root1234@127.0.0.1:3306/sakila -o src/entity -t actor,category  --with-serde both
@@ -2079,6 +2087,52 @@ Customer::find()
     .await?;
 ```
 
+要求： **查询返回Cate McQueen和Cuba Birch两人共同参演的所有电影**
+
+> 为此，要在film数据表中查找符合以下条件的所有行：对应于film_actor数据表中的两行。
+>
+> - 其中一行与Cate McQueen关联，
+> - 另一行与Cuba Birch关联。
+>
+> 因此，需要包含数据表film_actor和actor两次，每次使用不同的别名，以便服务器知道在不同的子句中引用的是哪个数据表
+
+***SQL 语句***
+
+```bash
+mysql> SELECT f.title
+ -> FROM film f
+ -> INNER JOIN film_actor fa1
+ -> ON f.film_id = fa1.film_id
+ -> INNER JOIN actor a1
+ -> ON fa1.actor_id = a1.actor_id
+ -> INNER JOIN film_actor fa2
+ -> ON f.film_id = fa2.film_id
+ -> INNER JOIN actor a2
+ -> ON fa2.actor_id = a2.actor_id
+ -> WHERE (a1.first_name = 'CATE' AND a1.last_name = 'MCQUEEN')
+ -> AND (a2.first_name = 'CUBA' AND a2.last_name = 'BIRCH');
++------------------+
+| title |
++------------------+
+Joining Three or More Tables | 97
+| BLOOD ARGONAUTS |
+| TOWERS HURRICANE |
++------------------+
+2 rows in set (0.00 sec)
+```
+
+***SeaORM***
+
+```rust
+
+```
+
+```sql
+
+```
+
+> **Note**
+
 ### 6.3.1 `UNION` 运算符
 
 要求： **从 customer 和 actor 表中获取所有名字和姓氏的集合**
@@ -2157,6 +2211,510 @@ pub async fn union_all(db: &DatabaseConnection) -> Result<()> {
 > [SelectStatement in sea_query::query - Rust (docs.rs)](https://docs.rs/sea-query/0.26.2/sea_query/query/struct.SelectStatement.html#examples-15)
 >
 > [SelectStatement in sea_query::query - Rust (docs.rs)](https://docs.rs/sea-query/0.26.2/sea_query/query/struct.SelectStatement.html#method.union)
+
+### 8.1 分组概念
+
+要求： **每位客户租借了多少部电影**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT customer_id, count(*)
+ -> FROM rental
+ -> GROUP BY customer_id;
++-------------+----------+
+| customer_id | count(*) |
++-------------+----------+
+| 1 | 32 |
+...
+| 599 | 19 |
++-------------+----------+
+599 rows in set (0.01 sec)
+```
+
+***SeaORM***
+
+```sql
+SELECT 
+  `rental`.`customer_id`, 
+  COUNT(*) AS `count` 
+FROM 
+  `rental` 
+GROUP BY 
+  `rental`.`customer_id`
+```
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{prelude::*, rental};
+use anyhow::Result;
+use sea_orm::{sea_query::Expr, DatabaseConnection, EntityTrait, FromQueryResult, QuerySelect};
+
+#[derive(Debug, FromQueryResult)]
+struct CustomerGropuByRes {
+    customer_id: u16,
+    count: i32,
+}
+pub async fn group_by(db: &DatabaseConnection) -> Result<()> {
+    let customer = Rental::find()
+        .select_only()
+        .column(rental::Column::CustomerId)
+        .column_as(Expr::asterisk().count(), "count")
+        .group_by(rental::Column::CustomerId)
+        .into_model::<CustomerGropuByRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> - `COUNT(*)`: `Expr::asterisk().count()`
+> - `GROUP_BY()`
+
+要求： **确定哪位客户借的电影最多**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT customer_id, count(*)
+ -> FROM rental
+ -> GROUP BY customer_id
+ -> ORDER BY 2 DESC;
++-------------+----------+
+| customer_id | count(*) |
++-------------+----------+
+| 148 | 46 |
+...
+| 318 | 12 |
++-------------+----------+
+599 rows in set (0.01 sec)
+```
+
+***SeaORM***
+
+```rust
+
+/// 要求： **确定哪位客户借的电影最多**
+/// ```
+/// SELECT
+///   `rental`.`customer_id`,
+///   COUNT(*) AS `count`
+/// FROM
+///   `rental`
+/// GROUP BY
+///   `rental`.`customer_id`
+/// ORDER BY
+///   COUNT(*) DESC
+/// ```
+pub async fn group_by_order_by(db: &DatabaseConnection) -> Result<()> {
+    let customer = Rental::find()
+        .select_only()
+        .column(rental::Column::CustomerId)
+        .column_as(Expr::asterisk().count(), "count")
+        .group_by(rental::Column::CustomerId)
+        .order_by_desc(Expr::asterisk().count())
+        .into_model::<CustomerGropuByRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> - `ORDER_BY()` : `order_by_desc(Expr::asterisk().count())`
+
+
+
+要求： **租借电影数量为40或多于40部的客户**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT customer_id, count(*)
+ -> FROM rental
+ -> GROUP BY customer_id
+ -> HAVING count(*) >= 40;
++-------------+----------+
+| customer_id | count(*) |
++-------------+----------+
+| 75 | 41 |
+| 144 | 42 |
+| 148 | 46 |
+| 197 | 40 |
+| 236 | 42 |
+| 469 | 40 |
+| 526 | 45 |
++-------------+----------+
+7 rows in set (0.01 sec)
+```
+
+***SeaORM***
+
+```rust
+/// 要求： 租借电影数量为40或多于40部的客户
+/// ```
+/// SELECT 
+///   `rental`.`customer_id`, 
+///   COUNT(*) AS `count` 
+/// FROM 
+///   `rental` 
+/// GROUP BY 
+///   `rental`.`customer_id` 
+/// HAVING 
+///   COUNT(*) >= 40
+/// ```
+pub async fn group_by_order_by_having(db: &DatabaseConnection) -> Result<()> {
+    let customer = Rental::find()
+        .select_only()
+        .column(rental::Column::CustomerId)
+        .column_as(Expr::asterisk().count(), "count")
+        .group_by(rental::Column::CustomerId)
+        .having(Expr::expr(Expr::asterisk().count()).gte(40))
+        .into_model::<CustomerGropuByRes>()
+        .all(db)
+        .await?;
+
+    println!("{:?}", customer);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> - `HAVING()`
+
+### 8.2 聚合函数
+
+要求： **常见的聚合函数来分析电影租借付款数据**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT MAX(amount) max_amt,
+ -> MIN(amount) min_amt,
+ -> AVG(amount) avg_amt,
+ -> SUM(amount) tot_amt,
+ -> COUNT(*) num_payments
+ -> FROM payment;
++---------+---------+----------+----------+--------------+
+| max_amt | min_amt | avg_amt | tot_amt | num_payments |
++---------+---------+----------+----------+--------------+
+| 11.99 | 0.00 | 4.200667 | 67416.51 | 16049 |
++---------+---------+----------+----------+--------------+
+1 row in set (0.09 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{payment, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    prelude::Decimal, sea_query::Expr, ColumnTrait, DatabaseConnection, EntityTrait,
+    FromQueryResult, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct PaymentRes {
+    max_amt: Decimal,
+    min_amt: Decimal,
+    tot_amt: Decimal,
+    num_payments: i32,
+}
+
+/// 要求：常见的聚合函数来分析电影租借付款数据
+/// ```
+/// SELECT
+///   MAX(`payment`.`amount`) AS `max_amt`,
+///   MIN(`payment`.`amount`) AS `min_amt`,
+///   SUM(`payment`.`amount`) AS `tot_amt`,
+///   COUNT(*) AS `num_payments`
+/// FROM
+///   `payment`
+/// ```
+pub async fn aggregate_functions(db: &DatabaseConnection) -> Result<()> {
+    let payment = Payment::find()
+        .select_only()
+        .column_as(payment::Column::Amount.max(), "max_amt")
+        .column_as(payment::Column::Amount.min(), "min_amt")
+        .column_as(payment::Column::Amount.sum(), "tot_amt")
+        .column_as(Expr::asterisk().count(), "num_payments")
+        .into_model::<PaymentRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", payment);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> - `MAX()` `MIN()` `SUM()` `COUNT()`
+>
+> **Warning**
+>
+> - 没有 `AVG()`
+
+#### 8.2.1 显示分组
+
+要求： **每位顾客的电影租借付款数据**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT customer_id,
+ -> MAX(amount) max_amt,
+ -> MIN(amount) min_amt,
+ -> AVG(amount) avg_amt,
+ -> SUM(amount) tot_amt,
+ -> COUNT(*) num_payments
+ -> FROM payment
+ -> GROUP BY customer_id;
++-------------+---------+---------+----------+---------+--------------+
+| customer_id | max_amt | min_amt | avg_amt | tot_amt | num_payments |
++-------------+---------+---------+----------+---------+--------------+
+| 1 | 9.99 | 0.99 | 3.708750 | 118.68 | 32 |
+...
+| 599 | 9.99 | 0.99 | 4.411053 | 83.81 | 19 |
++-------------+---------+---------+----------+---------+--------------+
+599 rows in set (0.04 sec)
+```
+
+***SeaORM***
+
+```rust
+#![allow(dead_code)]
+use crate::entity::{payment, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    prelude::Decimal, sea_query::Expr, ColumnTrait, DatabaseConnection, EntityTrait,
+    FromQueryResult, QuerySelect,
+};
+
+#[derive(Debug, FromQueryResult)]
+struct CustomerPayment {
+    customer_id: u16,
+    max_amt: Decimal,
+    min_amt: Decimal,
+    tot_amt: Decimal,
+    num_payments: i32,
+}
+
+/// 要求： 每位顾客的电影租借付款数据
+/// ```
+/// SELECT 
+///   `payment`.`customer_id`, 
+///   MAX(`payment`.`amount`) AS `max_amt`, 
+///   MIN(`payment`.`amount`) AS `min_amt`, 
+///   SUM(`payment`.`amount`) AS `tot_amt`, 
+///   COUNT(*) AS `num_payments` 
+/// FROM 
+///   `payment` 
+/// GROUP BY 
+///   `payment`.`customer_id`
+/// ```
+pub async fn aggregate_functions_customer(db: &DatabaseConnection) -> Result<()> {
+    let payment = Payment::find()
+        .select_only()
+        .column(payment::Column::CustomerId)
+        .column_as(payment::Column::Amount.max(), "max_amt")
+        .column_as(payment::Column::Amount.min(), "min_amt")
+        .column_as(payment::Column::Amount.sum(), "tot_amt")
+        .column_as(Expr::asterisk().count(), "num_payments")
+        .group_by(payment::Column::CustomerId)
+        .into_model::<CustomerPayment>()
+        .all(db)
+        .await?;
+    println!("{:?}", payment);
+    Ok(())
+}
+```
+
+> **Warning**
+>
+> - 怎么嵌套结构体
+
+#### 8.2.2　统计不同的值
+
+要求： **count()函数检查分组中每个成员的列值，以便查找和删除重复项，而不是简单地计算分组中值的数量。**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT COUNT(customer_id) num_rows,
+ -> COUNT(DISTINCT customer_id) num_customers
+ -> FROM payment;
++----------+---------------+
+| num_rows | num_customers |
++----------+---------------+
+| 16049 | 599 |
++----------+---------------+
+1 row in set (0.01 sec)
+
+```
+
+***SeaORM***
+
+```rust
+/// 在 `sea_orm` 中结合使用 `sea_query` 方法
+/// ```
+/// SELECT
+///   COUNT(customer_id) num_rows,
+///   COUNT(DISTINCT customer_id) num_customers
+/// FROM
+///   payment;
+/// ```
+async fn counting_distinct_values(db: &DatabaseConnection) -> Result<()> {
+    let count = Payment::find()
+        .select_only()
+        .column_as(payment::Column::CustomerId.count(), "num_rows")
+        .column_as(
+            Expr::col(payment::Column::CustomerId).count(),
+            "num_customers",
+        )
+        .all(db)
+        .await?;
+    println!("{:?}", count);
+    Ok(())
+}
+
+```
+
+> **Warning**
+>
+> 不知如何在 `sea_orm` 中结合使用 `sea_query`
+
+#### 8.2.3　使用表达式
+
+要求： **找出一部电影从被租借到后来归还之间相隔的最大天数**
+
+***SQL 语句***
+
+```bash
+mysql> SELECT MAX(datediff(return_date,rental_date))
+ -> FROM rental;
++----------------------------------------+
+| MAX(datediff(return_date,rental_date)) |
++----------------------------------------+
+| 33 |
++----------------------------------------+
+1 row in set (0.01 sec)
+```
+
+***SeaORM***
+
+```rust
+#[derive(Debug, FromQueryResult)]
+struct UsingExpressionsRes {
+    max: i32,
+}
+
+struct Datediff;
+
+impl Iden for Datediff {
+    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
+        write!(s, "datediff").unwrap();
+    }
+}
+
+/// 要求： **找出一部电影从被租借到后来归还之间相隔的最大天数**
+/// ```
+/// SELECT
+///   MAX(
+///      datediff(`return_date`, `rental_date`)
+///   ) AS `max`
+/// FROM
+///   `rental`
+/// ```
+pub async fn using_expressions(db: &DatabaseConnection) -> Result<()> {
+    let rental_date = Rental::find()
+        .select_only()
+        .column_as(
+            Expr::expr(Func::cust(Datediff).args(vec![
+                Expr::col(rental::Column::ReturnDate),
+                Expr::col(rental::Column::RentalDate),
+            ]))
+            .max(),
+            "max",
+        )
+        .into_model::<UsingExpressionsRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", rental_date);
+    Ok(())
+}
+```
+
+> **Note**
+>
+> 使用表达式
+>
+> `Expr::expr(Func::cust(Datediff).args(vec![
+>                 Expr::col(rental::Column::ReturnDate),
+>                 Expr::col(rental::Column::RentalDate),
+>             ]))`
+
+
+
+要求： ****
+
+***SQL 语句***
+
+```bash
+
+```
+
+***SeaORM***
+
+```rust
+
+```
+
+> **Note**
+
+
+
+要求： ****
+
+***SQL 语句***
+
+```bash
+
+```
+
+***SeaORM***
+
+```rust
+
+```
+
+> **Note**
+
+
+
+要求： ****
+
+***SQL 语句***
+
+```bash
+
+```
+
+***SeaORM***
+
+```rust
+
+```
+
+> **Note**
 
 
 
