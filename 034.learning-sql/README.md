@@ -2900,7 +2900,7 @@ pub async fn grouping_via_expressions(db: &DatabaseConnection) -> Result<()> {
 
 #### 8.3.4　生成汇总 `with rollup`
 
-要求： ****
+要求： **在 `group by`子句中使用了`with rollup`选项，来生成汇总**
 
 ***SQL 语句***
 
@@ -3051,86 +3051,381 @@ pub async fn group_filter_conditions(db: &DatabaseConnection) -> Result<()> {
 >
 > - `is_in()`
 
+### 9.1　什么是子查询
 
-
-要求： ****
+要求： **在单个查询中检索ID值最大的客户信息**
 
 ***SQL 语句***
 
 ```bash
+mysql> SELECT customer_id, first_name, last_name
+ -> FROM customer
+ -> WHERE customer_id = (SELECT MAX(customer_id) FROM customer);
++-------------+------------+-----------+
+| customer_id | first_name | last_name |
++-------------+------------+-----------+
+| 599 | AUSTIN | CINTRON |
++-------------+------------+-----------+
+1 row in set (0.27 sec)
 
 ```
 
 ***SeaORM***
 
 ```rust
+#![allow(dead_code)]
+use crate::entity::{customer, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::Query, ColumnTrait, Condition, DatabaseConnection, EntityTrait, FromQueryResult,
+    QueryFilter, QuerySelect,
+};
 
+#[derive(Debug, FromQueryResult)]
+pub struct SelectResult {
+    customer_id: u16,
+    first_name: String,
+    last_name: String,
+}
+
+/// 要求： **在单个查询中检索ID值最大的客户信息**
+/// ```
+/// SELECT
+///   `customer`.`customer_id`,
+///   `customer`.`first_name`,
+///   `customer`.`last_name`
+/// FROM
+///   `customer`
+/// WHERE
+///   `customer`.`customer_id` IN (
+///     SELECT
+///         MAX(`customer`.`customer_id`)
+///     FROM
+///         `customer`
+///   )
+///
+/// ```
+pub async fn what_is_a_subquery(db: &DatabaseConnection) -> Result<()> {
+    let res = Customer::find()
+        .select_only()
+        .column(customer::Column::CustomerId)
+        .column(customer::Column::FirstName)
+        .column(customer::Column::LastName)
+        .filter(
+            customer::Column::CustomerId.in_subquery(
+                Query::select()
+                    .expr(customer::Column::CustomerId.max())
+                    .from(Customer)
+                    .to_owned(),
+            ),
+        )
+        .into_model::<SelectResult>()
+        .all(db)
+        .await?;
+    println!("{:?}", res);
+    Ok(())
+}
 ```
 
 > **Note**
+>
+> `WHERE` 中 `=` 后或 `IN` 后跟 `SELECT` 子查询 `sub_query`
+>
+> `.filter(
+>
+> ​            customer::Column::CustomerId.in_subquery(
+>
+> ​                Query::select()
+>
+> ​                    .expr(customer::Column::CustomerId.max())
+>
+> ​                    .from(Customer)
+>
+> ​                    .to_owned(),
+>
+> ​            ),
+>
+> ​        )`
 
+### 9.3　非关联子查询
 
-
-要求： ****
+要求： **查询返回所有不在印度的城市**
 
 ***SQL 语句***
 
 ```bash
+mysql> SELECT city_id, city
+ -> FROM city
+ -> WHERE country_id <> 
+ -> (SELECT country_id FROM country WHERE country = 'India');
++---------+----------------------------+
+| city_id | city |
++---------+----------------------------+
+| 1 | A Corua (La Corua) |
+...
+| 600 | Ziguinchor |
++---------+----------------------------+
+540 rows in set (0.02 sec)
 
 ```
 
 ***SeaORM***
 
 ```rust
+#![allow(dead_code)]
+use crate::entity::{city, country, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::Query, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
 
+#[derive(Debug, FromQueryResult)]
+pub struct NoncorrelatedSubqueriesRes {
+    city_id: u16,
+    city: String,
+}
+
+/// 要求： **查询返回所有不在印度的城市**
+/// ```
+/// SELECT
+///   `city`.`city_id`,
+///   `city`.`city`
+/// FROM
+///   `city`
+/// WHERE
+///   `city`.`country_id` NOT IN (
+///     SELECT
+///         `country_id`
+///     FROM
+///         `country`
+///     WHERE
+///         `country`.`country` = 'India'
+///   )
+/// ```
+pub async fn noncorrelated_subqueries(db: &DatabaseConnection) -> Result<()> {
+    let res = City::find()
+        .select_only()
+        .column(city::Column::CityId)
+        .column(city::Column::City)
+        .filter(
+            city::Column::CountryId.not_in_subquery(
+                Query::select()
+                    .column(country::Column::CountryId)
+                    .from(Country)
+                    .and_where(country::Column::Country.eq("India"))
+                    .to_owned(),
+            ),
+        )
+        .into_model::<NoncorrelatedSubqueriesRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", res);
+    Ok(())
+}
 ```
 
-> **Note**
+#### 9.3.1　多行单列子查询
 
+**1.`IN` `NOT IN` 运算符**
 
+>  `=` `<>` 只能和单个值进行比较。
+>
+> `IN` `NOT IN` 可以与一组值进行相等不想等比较
 
-要求： ****
+要求： **查找位于Canada或Mexico的所有城市**
 
 ***SQL 语句***
 
 ```bash
-
+mysql> SELECT city_id, city
+ -> FROM city
+ -> WHERE country_id IN
+ -> (SELECT country_id
+ -> FROM country
+ -> WHERE country IN ('Canada','Mexico'));
+Noncorrelated Subqueries | 165
++---------+----------------------------+
+| city_id | city |
++---------+----------------------------+
+| 179 | Gatineau |
+...
+| 595 | Zapopan |
++---------+----------------------------+
+37 rows in set (0.00 sec)
 ```
 
 ***SeaORM***
 
 ```rust
+#![allow(dead_code)]
+use crate::entity::{city, country, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::Query, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
 
+#[derive(Debug, FromQueryResult)]
+pub struct MultipleRowSingleColumnSubqueriesRes {
+    city_id: u16,
+    city: String,
+}
+
+/// 要求： **查找位于Canada或Mexico的所有城市**
+/// ```
+/// SELECT
+///   `city`.`city_id`,
+///   `city`.`city`
+/// FROM
+///   `city`
+/// WHERE
+///   `city`.`country_id` IN (
+///     SELECT
+///       `country_id`
+///     FROM
+///       `country`
+///     WHERE
+///       `country`.`country` IN ('Canada', 'Mexico')
+///   )
+/// ```
+pub async fn multiple_row_single_column_subqueries(db: &DatabaseConnection) -> Result<()> {
+    let res = City::find()
+        .select_only()
+        .column(city::Column::CityId)
+        .column(city::Column::City)
+        .filter(
+            city::Column::CountryId.in_subquery(
+                Query::select()
+                    .column(country::Column::CountryId)
+                    .from(Country)
+                    .and_where(country::Column::Country.is_in(["Canada", "Mexico"]))
+                    .to_owned(),
+            ),
+        )
+        .into_model::<MultipleRowSingleColumnSubqueriesRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", res);
+    Ok(())
+}
 ```
 
-> **Note**
+**2．all运算符**
 
-
-
-要求： ****
+要求： **查询搜索所有从未获得过免费电影租借的客户**
 
 ***SQL 语句***
 
 ```bash
-
+mysql> SELECT first_name, last_name
+ -> FROM customer
+ -> WHERE customer_id <> ALL
+ -> (SELECT customer_id
+ -> FROM payment
+ -> WHERE amount = 0);
++-------------+--------------+
+| first_name | last_name |
++-------------+--------------+
+| MARY | SMITH |
+...
+| AUSTIN | CINTRON |
++-------------+--------------+
+576 rows in set (0.01 sec)
 ```
 
 ***SeaORM***
 
 ```rust
+#![allow(dead_code)]
+use crate::entity::{city, country, customer, payment, prelude::*};
+use anyhow::Result;
+use sea_orm::{
+    sea_query::Query, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect,
+};
 
+#[derive(Debug, FromQueryResult)]
+struct AllOperatorRes {
+    first_name: String,
+    last_name: String,
+}
+
+/// 要求： **查询搜索所有从未获得过免费电影租借的客户**
+/// ```
+/// SELECT
+///   `customer`.`first_name`,
+///   `customer`.`last_name`
+/// FROM
+///   `customer`
+/// WHERE
+///   `customer`.`customer_id` NOT IN (
+///     SELECT
+///       `customer_id`
+///     FROM
+///       `payment`
+///     WHERE
+///       `payment`.`amount` = 0
+///   )
+/// ```
+pub async fn all_operator(db: &DatabaseConnection) -> Result<()> {
+    let customer = Customer::find()
+        .select_only()
+        .column(customer::Column::FirstName)
+        .column(customer::Column::LastName)
+        .filter(
+            customer::Column::CustomerId.not_in_subquery(
+                Query::select()
+                    .column(payment::Column::CustomerId)
+                    .from(Payment)
+                    .and_where(payment::Column::Amount.eq(0))
+                    .to_owned(),
+            ),
+        )
+        .into_model::<AllOperatorRes>()
+        .all(db)
+        .await?;
+    println!("{:?}", customer);
+    Ok(())
+}
 ```
 
 > **Note**
+>
+> `in`运算符可用于查看能否在一个表达式集合中找到某个表达式，`all`运算符则用于将某个值与集合中的所有值进行比较。构建这种条件时需要将比较运算符（`=`、`<>`、`<`、`>`等）与`all`运算符配合使用
+>
+> 大多数人更喜欢换一种方式编写查询，而避免使用all运算符。下列查询使用`not in`运算符，生成的结果和上一个示例一模一样。`not in` 的版本更易于理解
 
 
 
-要求： ****
+要求： **查询返回所有北美洲客户租借的电影总数，包含查询返回电影租借总数超过任何北美洲客户的全部客户**
 
 ***SQL 语句***
 
 ```bash
-
+mysql> SELECT customer_id, count(*)
+ -> FROM rental
+ -> GROUP BY customer_id
+ -> HAVING count(*) > ALL
+ -> (SELECT count(*)
+ -> FROM rental r
+ -> INNER JOIN customer c
+ -> ON r.customer_id = c.customer_id
+ -> INNER JOIN address a
+ -> ON c.address_id = a.address_id
+ -> INNER JOIN city ct
+ -> ON a.city_id = ct.city_id
+ -> INNER JOIN country co
+ -> ON ct.country_id = co.country_id
+ -> WHERE co.country IN ('United States','Mexico','Canada')
+ -> GROUP BY r.customer_id
+ -> );
++-------------+----------+
+| customer_id | count(*) |
++-------------+----------+
+| 148 | 46 |
++-------------+----------+
+1 row in set (0.01 sec)
 ```
 
 ***SeaORM***

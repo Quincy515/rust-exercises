@@ -4,6 +4,7 @@ mod ch5;
 
 pub mod ch6;
 pub mod ch8;
+pub mod ch9;
 pub mod entity;
 
 use anyhow::Result;
@@ -25,7 +26,11 @@ async fn main() -> Result<()> {
         .max_lifetime(Duration::from_secs(8));
     let db = Database::connect(opt).await?;
 
-    ch8::ch8_4::group_filter_conditions(&db).await?;
+    ch9::ch9_3_1::all_operator(&db).await?;
+    // ch9::ch9_3_1::multiple_row_single_column_subqueries(&db).await?;
+    // ch9::ch9_3::noncorrelated_subqueries(&db).await?;
+    // ch9::ch9_1::what_is_a_subquery(&db).await?;
+    // ch8::ch8_4::group_filter_conditions(&db).await?;
     // ch8::ch8_3_3::grouping_via_expressions(&db).await?;
     // ch8::ch8_3_2::multicolumn_grouping(&db).await?;
     // ch8::ch8_3_1::single_column_grouping(&db).await?;
