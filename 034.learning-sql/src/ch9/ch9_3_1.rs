@@ -3,7 +3,7 @@ use crate::entity::{address, city, country, customer, payment, prelude::*, renta
 use anyhow::Result;
 use sea_orm::{
     sea_query::{Expr, Query},
-    ColumnTrait, DatabaseBackend, DatabaseConnection, EntityTrait, FromQueryResult, JoinType,
+    ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, JoinType,
     QueryFilter, QuerySelect, RelationTrait,
 };
 
