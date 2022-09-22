@@ -11,7 +11,7 @@ entity = { path = "entity" }
 migration = { path = "migration" }
 
 tokio = {version = "1", features = ["macros", "rt-multi-thread"]}
-
+anyhow = "1"
 [dependencies.sea-orm]
 default-features = false
 features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"]
