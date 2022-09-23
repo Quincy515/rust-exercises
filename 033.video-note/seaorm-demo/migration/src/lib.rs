@@ -2,6 +2,7 @@ pub use sea_orm_migration::prelude::*;
 
 mod m20220101_000001_create_table;
 mod m20220922_170643_dictation;
+mod m20220923_003557_word;
 
 pub struct Migrator;
 
@@ -11,6 +12,7 @@ impl MigratorTrait for Migrator {
         vec![
             Box::new(m20220101_000001_create_table::Migration),
             Box::new(m20220922_170643_dictation::Migration),
+            Box::new(m20220923_003557_word::Migration),
         ]
     }
 }

@@ -2,5 +2,6 @@
 
 pub mod prelude;
 
+pub mod dict;
 pub mod dictation;
 pub mod post;
