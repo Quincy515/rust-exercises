@@ -2,6 +2,7 @@ use futures::executor::block_on;
 use futures::{future, StreamExt};
 use libp2p::{identity, ping, Multiaddr, PeerId, Swarm};
 use std::task::Poll;
+use libp2p::ping::PingConfig;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let local_key = identity::Keypair::generate_ed25519();
