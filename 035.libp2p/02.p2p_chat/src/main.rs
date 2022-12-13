@@ -3,14 +3,14 @@ use std::error::Error;
 
 use async_std::io;
 use futures::{
-    prelude::{*, stream::StreamExt},
+    prelude::{stream::StreamExt, *},
     select,
 };
 use libp2p::{
     floodsub::{self, Floodsub, FloodsubEvent},
-    identity, mdns,
-    Multiaddr,
-    PeerId, swarm::{NetworkBehaviour, SwarmEvent}, Swarm,
+    identity, mdns, ping,
+    swarm::{keep_alive, NetworkBehaviour, SwarmEvent},
+    Multiaddr, PeerId, Swarm,
 };
 
 #[async_std::main]
@@ -35,6 +35,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     struct MyBehaviour {
         floodsub: Floodsub,
         mdns: mdns::async_io::Behaviour,
+        keep_alive: keep_alive::Behaviour,
+        ping: ping::Behaviour,
     }
 
     #[allow(clippy::large_enum_variant)]
@@ -42,6 +44,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     enum OutEvent {
         Floodsub(FloodsubEvent),
         Mdns(mdns::Event),
+        Ping(ping::Event),
+        KeepAlive(void::Void),
     }
 
     impl From<mdns::Event> for OutEvent {
@@ -56,12 +60,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    impl From<ping::Event> for OutEvent {
+        fn from(v: ping::Event) -> Self {
+            Self::Ping(v)
+        }
+    }
+
+    impl From<void::Void> for OutEvent {
+        fn from(event: void::Void) -> Self {
+            Self::KeepAlive(event)
+        }
+    }
+
     // Create a Swarm to manage peers and events
     let mut swarm = {
         let mdns = mdns::async_io::Behaviour::new(mdns::Config::default())?;
         let mut behaviour = MyBehaviour {
             floodsub: Floodsub::new(local_peer_id),
             mdns,
+            keep_alive: keep_alive::Behaviour::default(),
+            ping: ping::Behaviour::default(),
         };
 
         behaviour.floodsub.subscribe(floodsub_topic.clone());
@@ -127,24 +145,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             .behaviour_mut()
                             .floodsub
                             .add_node_to_partial_view(peer);
-                        // println!("{peer:?} discovered");
                     }
                 }
-                // SwarmEvent::Behaviour(OutEvent::Mdns(mdns::Event::Expired(
-                //     list
-                // ))) => {
-                //     for (peer, _) in list {
-                //         if !swarm.behaviour_mut().mdns.has_node(&peer) {
-                //             swarm
-                //                 .behaviour_mut()
-                //                 .floodsub
-                //                 .remove_node_from_partial_view(&peer);
-                //             println!("{peer:?} expired");
-                //         }
-                //     }
+                SwarmEvent::Behaviour(OutEvent::Mdns(mdns::Event::Expired(
+                    list
+                ))) => {
+                    for (peer, _) in list {
+                        if !swarm.behaviour_mut().mdns.has_node(&peer) {
+                            swarm
+                                .behaviour_mut()
+                                .floodsub
+                                .remove_node_from_partial_view(&peer);
+                        }
+                    }
+                },
+                SwarmEvent::Behaviour(OutEvent::Ping(event)) => {
+                    println!("{event:?}");
+                },
+                // SwarmEvent::Behaviour(OutEvent::KeepAlive(event)) => {
+                //     println!("keey_alive_event: {event:?}");
                 // },
                 _ => {}
             }
         }
     }
 }
+
+// https://cs.github.com/qaul/qaul.net/blob/3564290b7ab45ddaabd5d9a92ff2eb99c3ab7588/rust/libqaul/src/connections/lan.rs#L87
