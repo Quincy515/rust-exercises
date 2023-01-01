@@ -159,9 +159,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
                         }
                     }
                 },
-                SwarmEvent::Behaviour(OutEvent::Ping(event)) => {
-                    println!("{event:?}");
-                },
+                // SwarmEvent::Behaviour(OutEvent::Ping(event)) => {
+                //     println!("{event:?}");
+                // },
                 // SwarmEvent::Behaviour(OutEvent::KeepAlive(event)) => {
                 //     println!("keey_alive_event: {event:?}");
                 // },
@@ -172,3 +172,4 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 // https://cs.github.com/qaul/qaul.net/blob/3564290b7ab45ddaabd5d9a92ff2eb99c3ab7588/rust/libqaul/src/connections/lan.rs#L87
+// https://github.com/libp2p/rust-libp2p/blob/master/protocols/ping/src/protocol.rs

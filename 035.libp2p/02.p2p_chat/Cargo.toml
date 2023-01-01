@@ -13,3 +13,6 @@ env_logger = "0.10.0"
 futures = "0.3"
 libp2p = {version = "0.50.0", features = ["full"]}
 void = "1"
+
+libp2p-core = "0.38.0"
+rand = "0.8"
