@@ -1,4 +1,5 @@
 mod components;
+mod helper;
 use components::test::TestComp;
 
 fn main() {
