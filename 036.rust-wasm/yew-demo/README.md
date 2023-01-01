@@ -208,5 +208,50 @@ trunck serve
 
 访问 http://127.0.0.1:8080/ 点击按钮可以看到 `alert` 弹出框
 
+## 使用 web-sys 进行 js 交互
+
+https://rustwasm.github.io/wasm-bindgen/web-sys/index.html
+
+基于 wasm-bindgen 提供原生的导入，文档 https://docs.rs/web-sys/latest/web_sys/
+
+加入依赖
+
+```toml
+[dependencies]
+wasm-bindgen = "0.2"
+yew = {version = "0.20.0", features = ["csr"]}
+
+[dependencies.web-sys]
+features = [
+  'Document',
+  'Element',
+  'HtmlElement',
+  'Node',
+  'Window',
+]
+version = "0.3"
+```
+
+这样就可以把 `js.rs` 原写法
+
+```rust
+use wasm_bindgen::prelude::*;
+#[wasm_bindgen]
+extern "C" {
+    pub fn alert(s: &str);
+}
+```
+
+简化写成 
+
+```rust
+use web_sys::window;
+
+// window.alert
+pub fn alert(str: &str) {
+    window().unwrap().alert_with_message(str).unwrap();
+}
+```
+
 
 
