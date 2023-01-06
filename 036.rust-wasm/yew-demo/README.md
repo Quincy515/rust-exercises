@@ -253,5 +253,40 @@ pub fn alert(str: &str) {
 }
 ```
 
+## 在 wasm 中 http 请求的基本代码
 
+http://github.com/rustwasm/gloo
+
+glow 是一个库集合（工具包），不是一个具体的框架
+
+web-sys/js-sys 直接使用非常不方便，因此 gloo 提供了原始绑定的包装器
+
+- 我们主要使用 gloo-net https://github.com/rustwasm/gloo/tree/master/crates/net
+- yew 官网推荐 https://yew.rs/docs/tutorial#fetching-data-using-external-rest-api
+
+在依赖中添加 
+
+```toml
+[dependencies]
+gloo-net = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+wasm-bindgen-futures = "0.4"
+```
+
+`serde` 是用来做序列化和反序列化的
+
+`wasm-bindgen-futures` 主要是实现前端 (js) 中的 Promise
+
+首先在 `js.rs` 中添加 `log` 函数
+
+```rust
+use web_sys::console;
+
+...
+
+// console.log(xxx)
+pub fn log(obj: &wasm_bindgen::JsValue) {
+    console::log_1(obj);
+}
+```
 
