@@ -1,3 +1,8 @@
+- [yew基本配置、创建最简单界面](#yew基本配置创建最简单界面)
+- [添加按钮、触发事件、JS交互（wasm-bindgen）](#添加按钮触发事件js交互wasm-bindgen)
+- [使用 web-sys 进行 js 交互](#使用-web-sys-进行-js-交互)
+- [在 wasm 中 http 请求的基本代码](#在-wasm-中-http-请求的基本代码)
+
 ## yew基本配置、创建最简单界面
 
 https://yew.rs/docs/next/getting-started/introduction
