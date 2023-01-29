@@ -2,6 +2,7 @@
 
 https://yew.rs/docs/next/getting-started/introduction
 
+分别在控制台执行
 ```shell
 rustup target add wasm32-unknown-unknown
 cargo install trunk
@@ -15,7 +16,7 @@ cargo install wasm-bindgen-cli
 yew = {version = "0.20.0", features = ["csr"]}
 ```
 
-在 `main.rs` 中添加 
+在 `main.rs` 中添加初始化
 
 ```rust
 fn main() {
@@ -31,7 +32,7 @@ fn main() {
 pub mod test;
 ```
 
-在 `test.rs` 中添加
+在 `test.rs` 中添加最简单的组件
 
 ```rust
 use yew::prelude::*;
@@ -232,7 +233,7 @@ features = [
 version = "0.3"
 ```
 
-这样就可以把 `js.rs` 原写法
+这样就可以不用 `js.rs` 原写法
 
 ```rust
 use wasm_bindgen::prelude::*;
@@ -242,7 +243,7 @@ extern "C" {
 }
 ```
 
-简化写成 
+直接简化写成
 
 ```rust
 use web_sys::window;
@@ -277,7 +278,7 @@ wasm-bindgen-futures = "0.4"
 
 `wasm-bindgen-futures` 主要是实现前端 (js) 中的 Promise
 
-首先在 `js.rs` 中添加 `log` 函数
+首先在 `js.rs` 中使用 `web_sys::console` 添加 `log` 函数
 
 ```rust
 use web_sys::console;
@@ -290,3 +291,13 @@ pub fn log(obj: &wasm_bindgen::JsValue) {
 }
 ```
 
+```go
+func main() {
+    r := gin.New()
+    r.Use(cros())
+    r.Get("/test", func(c *gin.Context) {
+        c.Json(200, gin.H{"name": "test"})
+    })
+    r.Run(":8081")
+}
+```
