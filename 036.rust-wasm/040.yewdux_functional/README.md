@@ -221,5 +221,8 @@ pub fn login_form() -> Html {
 }
 ```
 
-
+## Add serde
+```shell
+cargo add serde
+```
 
