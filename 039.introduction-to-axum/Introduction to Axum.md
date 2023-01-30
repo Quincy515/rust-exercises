@@ -367,129 +367,593 @@ pub fn create_routes() -> Router {
 
 ## 9. Extracting Standard Headers
 
-[代码变动](
+添加 axum 的 features
+
+```shell
+cargo add axum -F headers
+```
+
+新建文件 `api/mirror_user_agent.rs`
+
+```rust
+use axum::{headers::UserAgent, TypedHeader};
+
+pub async fn mirror_user_agent(TypedHeader(user_agent): TypedHeader<UserAgent>) -> String {
+    user_agent.to_string()
+}
+```
+
+变动 `api/mod.rs`
+
+```rust
+pub mod hello_world;
+pub mod mirror_body_json;
+pub mod mirror_body_string;
+pub mod mirror_user_agent;
+pub mod path_variable;
+pub mod query_params;
+
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use hello_world::hello_world;
+use mirror_body_json::mirror_body_json;
+use mirror_body_string::mirror_body_string;
+use mirror_user_agent::mirror_user_agent;
+use path_variable::{hard_coded_path, path_variable};
+use query_params::query_params;
+
+pub fn create_routes() -> Router {
+    Router::new()
+        .route("/", get(hello_world))
+        .route("/mirror_body_string", post(mirror_body_string))
+        .route("/mirror_body_json", post(mirror_body_json))
+        .route("/path_variable/:id", get(path_variable))
+        .route("/path_variable/15", get(hard_coded_path))
+        .route("/query_params", get(query_params))
+        .route("/mirror_user_agent", get(mirror_user_agent))
+}
+```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/fc41878f6409d1632bb94095136e01b1a2d4b454)
 
 ## 10. Extracting Custom Headers
 
-[代码变动](
+新建文件 `api/mirror_custom_header.rs`
+
+```rust
+use axum::http::{HeaderMap, HeaderValue};
+
+pub async fn mirror_custom_header(headers: HeaderMap) -> String {
+    let default_value = HeaderValue::from_static("null");
+    let value = headers.get("x-token").unwrap_or(&default_value);
+    value.to_str().unwrap().to_owned()
+}
+```
+
+变动 `api/mod.rs`
+
+```rust
+pub mod hello_world;
+pub mod mirror_body_json;
+pub mod mirror_body_string;
+pub mod mirror_custom_header;
+pub mod mirror_user_agent;
+pub mod path_variable;
+pub mod query_params;
+
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use hello_world::hello_world;
+use mirror_body_json::mirror_body_json;
+use mirror_body_string::mirror_body_string;
+use mirror_custom_header::mirror_custom_header;
+use mirror_user_agent::mirror_user_agent;
+use path_variable::{hard_coded_path, path_variable};
+use query_params::query_params;
+
+pub fn create_routes() -> Router {
+    Router::new()
+        .route("/", get(hello_world))
+        .route("/mirror_body_string", post(mirror_body_string))
+        .route("/mirror_body_json", post(mirror_body_json))
+        .route("/path_variable/:id", get(path_variable))
+        .route("/path_variable/15", get(hard_coded_path))
+        .route("/query_params", get(query_params))
+        .route("/mirror_user_agent", get(mirror_user_agent))
+        .route("/mirror_custom_header", get(mirror_custom_header))
+}
+```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/14002ef2148fff64fded743e3ce6cb908f08e45c)
 
 ## 11. CORS Middleware
+
+https://docs.rs/axum/latest/axum/middleware/index.html#commonly-used-middleware
+
+https://docs.rs/tower-http/latest/tower_http/cors/index.html
+
+```shell
+cargo add tower-http -F cors
+```
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 12. Shared Middleware Data
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 13. Custom Middleware
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
-<a name="14-http-status-codes"></a>
 ## 14. HTTP Status Codes
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 15. 200 HTTP Codes
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 16. Returning JSON
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 17. Validating with  Serde
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 18. Creating a Database
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 19. SeaORM
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 20. Connecting SeaORM to the Database
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 21. Generating SeaORM Models
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 22. Custom Extractors
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 23. Passing Data to Handlers
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 24. Inserting to the Database
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 25. Selecting One Item from the Database
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 26. Get all from the Database
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 27. Using SeaORM filters
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 28. Atomic Updates
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 29. Partial Updates
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 30. Deleting Data 
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 31. Soft Deleting Data
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 32. Creating Account
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 33. Logging In
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 34. Guarding a Route
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 35. Logging Out
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 36. Guarding in Middleware
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 37. Hashing Passwords
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 38. Using JWTs
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
 
 ## 39. Custom Errors
 
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
+
 [代码变动](
 
 ## 40. Deploying
+
+新建文件 `api/.rs`
+
+```rust
+
+```
+
+变动 `api/mod.rs`
+
+```rust
+
+```
 
 [代码变动](
