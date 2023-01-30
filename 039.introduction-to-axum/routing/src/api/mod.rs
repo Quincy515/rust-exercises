@@ -2,6 +2,7 @@ pub mod hello_world;
 pub mod mirror_body_json;
 pub mod mirror_body_string;
 pub mod path_variable;
+pub mod query_params;
 
 use axum::{
     routing::{get, post},
@@ -11,6 +12,7 @@ use hello_world::hello_world;
 use mirror_body_json::mirror_body_json;
 use mirror_body_string::mirror_body_string;
 use path_variable::{hard_coded_path, path_variable};
+use query_params::query_params;
 
 pub fn create_routes() -> Router {
     Router::new()
@@ -19,4 +21,5 @@ pub fn create_routes() -> Router {
         .route("/mirror_body_json", post(mirror_body_json))
         .route("/path_variable/:id", get(path_variable))
         .route("/path_variable/15", get(hard_coded_path))
+        .route("/query_params", get(query_params))
 }
