@@ -8,6 +8,7 @@ pub mod mirror_custom_header;
 pub mod mirror_user_agent;
 pub mod path_variable;
 pub mod query_params;
+pub mod returns_201;
 pub mod set_custom_middleware;
 
 use always_errors::always_errors;
@@ -25,6 +26,7 @@ use mirror_custom_header::mirror_custom_header;
 use mirror_user_agent::mirror_user_agent;
 use path_variable::{hard_coded_path, path_variable};
 use query_params::query_params;
+use returns_201::returns_201;
 use set_custom_middleware::set_custom_middleware;
 use tower_http::cors::{Any, CorsLayer};
 
@@ -55,4 +57,5 @@ pub fn create_routes() -> Router {
         .layer(Extension(shared_data))
         .layer(cors)
         .route("/always_errors", get(always_errors))
+        .route("/returns_201", get(returns_201))
 }
