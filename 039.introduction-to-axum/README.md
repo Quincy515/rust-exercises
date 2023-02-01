@@ -24,6 +24,7 @@
 - [20. Connecting SeaORM to the Database](#20-connecting-seaorm-to-the-database)
 - [21. Generating SeaORM Models](#21-generating-seaorm-models)
 - [22. Custom Extractors](#22-custom-extractors)
+  - [延伸 验证失败，返回 200 和自定义 json 数据](#延伸-验证失败返回-200-和自定义-json-数据)
 - [23. Passing Data to Handlers](#23-passing-data-to-handlers)
 - [24. Inserting to the Database](#24-inserting-to-the-database)
 - [25. Selecting One Item from the Database](#25-selecting-one-item-from-the-database)
@@ -1611,7 +1612,91 @@ curl -X POST \
 
 实现自定义提取器，可以在 `handler` 函数处理前进行预处理
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/d8f6c6c2cee50c97bd4164501fb8985e6be5cbac)
+
+### 延伸 验证失败，返回 200 和自定义 json 数据
+
+```rust
+use axum::{
+    async_trait,
+    body::HttpBody,
+    extract::FromRequest,
+    http::{Request, StatusCode},
+    BoxError, Json, RequestExt,
+};
+use serde::{Deserialize, Serialize};
+use validator::Validate;
+
+#[derive(Deserialize, Serialize, Validate)]
+pub struct RequestUser {
+    #[validate(email(message = "must be a valid email"))]
+    pub username: String,
+    #[validate(length(min = 6, message = "must be at least 6 characters"))]
+    pub password: String,
+}
+
+#[derive(Serialize)]
+pub struct ResponseErr {
+    pub msg: String,
+    pub code: i8,
+}
+
+#[async_trait]
+impl<S, B> FromRequest<S, B> for RequestUser
+where
+    S: Send + Sync,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<BoxError>,
+{
+    type Rejection = Json<ResponseErr>;
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+        let Json(user) =
+            req.extract::<Json<RequestUser>, _>()
+                .await
+                .map_err(|err| ResponseErr {
+                    msg: err.to_string(),
+                    code: -1,
+                })?;
+
+        if let Err(err) = user.validate() {
+            let res = ResponseErr {
+                msg: err.to_string(),
+                code: -1,
+            };
+            return Err(Json(res));
+        }
+        Ok(user)
+    }
+}
+
+pub async fn custom_json_extractor(user: RequestUser) -> Json<RequestUser> {
+    Json(user)
+}
+```
+
+此时访问 
+
+```shell
+curl -X POST \
+  'localhost:3000/custom_json_extractor' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer.com",
+  "password": "1234"
+}'
+```
+
+可以看到错误为 200
+
+```json
+{
+  "msg": "username: must be a valid email\npassword: must be at least 6 characters",
+  "code": -1
+}
+```
 
 ## 23. Passing Data to Handlers
 

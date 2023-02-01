@@ -16,6 +16,12 @@ pub struct RequestUser {
     pub password: String,
 }
 
+#[derive(Serialize)]
+pub struct ResponseErr {
+    pub msg: String,
+    pub code: i8,
+}
+
 #[async_trait]
 impl<S, B> FromRequest<S, B> for RequestUser
 where
@@ -24,15 +30,22 @@ where
     B::Data: Send,
     B::Error: Into<BoxError>,
 {
-    type Rejection = (StatusCode, String);
+    type Rejection = Json<ResponseErr>;
     async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
-        let Json(user) = req
-            .extract::<Json<RequestUser>, _>()
-            .await
-            .map_err(|err| (StatusCode::BAD_REQUEST, format!("{}", err)))?;
+        let Json(user) =
+            req.extract::<Json<RequestUser>, _>()
+                .await
+                .map_err(|err| ResponseErr {
+                    msg: err.to_string(),
+                    code: -1,
+                })?;
 
         if let Err(err) = user.validate() {
-            return Err((StatusCode::BAD_REQUEST, err.to_string()));
+            let res = ResponseErr {
+                msg: err.to_string(),
+                code: -1,
+            };
+            return Err(Json(res));
         }
         Ok(user)
     }
