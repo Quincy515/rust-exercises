@@ -18,7 +18,7 @@
 - [14. HTTP Status Codes](#14-http-status-codes)
 - [15. 200 HTTP Codes](#15-200-http-codes)
 - [16. Returning JSON](#16-returning-json)
-- [17. Validating with  Serde](#17-validating-with--serde)
+- [17. Validating with Serde](#17-validating-with-serde)
 - [18. Creating a Database](#18-creating-a-database)
 - [19. SeaORM](#19-seaorm)
 - [20. Connecting SeaORM to the Database](#20-connecting-seaorm-to-the-database)
@@ -191,7 +191,7 @@ pub async fn mirror_body_string(body: String) -> String {
 }
 ```
 
-修改 `api/mod.rs`
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 pub mod hello_world;
@@ -210,6 +210,8 @@ pub fn create_routes() -> Router {
         .route("/mirror_body_string", post(mirror_body_string))
 }
 ```
+
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/4cdd6196e620bc023a14da98e949f7c90d59f11a)
 
@@ -244,7 +246,7 @@ pub async fn mirror_body_json(Json(body): Json<MirrorJson>) -> Json<MirrorJsonRe
 }
 ```
 
-修改 `api/mod.rs `
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 pub mod hello_world;
@@ -266,6 +268,7 @@ pub fn create_routes() -> Router {
         .route("/mirror_body_json", post(mirror_body_json))
 }
 ```
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/b83bf28f3a18b0ddec2f3af9a1b0c276993dc957)
 
@@ -285,7 +288,7 @@ pub async fn hard_coded_path() -> String {
 }
 ```
 
-修改 `api/mod.rs `
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 pub mod hello_world;
@@ -311,6 +314,7 @@ pub fn create_routes() -> Router {
         .route("/path_variable/15", get(hard_coded_path))
 }
 ```
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/cc760776921edfc0c72902ee83996a7e5c9db357)
 
@@ -333,7 +337,7 @@ pub async fn query_params(Query(query): Query<QueryParams>) -> Json<QueryParams>
 }
 ```
 
-变动 `api/mod.rs`
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 pub mod hello_world;
@@ -362,6 +366,7 @@ pub fn create_routes() -> Router {
         .route("/query_params", get(query_params))
 }
 ```
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/c4f848b0e8e39ae02df17f39ce3b230e3958213d)
 
@@ -383,7 +388,7 @@ pub async fn mirror_user_agent(TypedHeader(user_agent): TypedHeader<UserAgent>) 
 }
 ```
 
-变动 `api/mod.rs`
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 pub mod hello_world;
@@ -415,6 +420,7 @@ pub fn create_routes() -> Router {
         .route("/mirror_user_agent", get(mirror_user_agent))
 }
 ```
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/fc41878f6409d1632bb94095136e01b1a2d4b454)
 
@@ -432,7 +438,7 @@ pub async fn mirror_custom_header(headers: HeaderMap) -> String {
 }
 ```
 
-变动 `api/mod.rs`
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 pub mod hello_world;
@@ -467,6 +473,7 @@ pub fn create_routes() -> Router {
         .route("/mirror_custom_header", get(mirror_custom_header))
 }
 ```
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/14002ef2148fff64fded743e3ce6cb908f08e45c)
 
@@ -480,7 +487,7 @@ https://docs.rs/tower-http/latest/tower_http/cors/index.html
 cargo add tower-http -F cors
 ```
 
-变动 `api/mod.rs`
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 pub mod hello_world;
@@ -518,8 +525,7 @@ pub fn create_routes() -> Router {
         .layer(cors)
 }
 ```
-
-[代码变动](
+</details>
 
 ## 12. Shared Middleware Data
 
@@ -535,7 +541,7 @@ pub async fn middleware_message(Extension(shared_data): Extension<SharedData>) -
 }
 ```
 
-变动 `api/mod.rs`
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 pub mod hello_world;
@@ -587,6 +593,7 @@ pub fn create_routes() -> Router {
         .layer(cors)
 }
 ```
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/2bad6b281178528354e6f9a97805dd4ff68c8916)
 
@@ -1154,7 +1161,12 @@ pub fn create_routes() -> Router {
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/7938cdca49c6d0e4401f1d53168dd896429460b7)
 
-## 17. Validating with  Serde
+## 17. Validating with Serde
+
+Validate incoming data
+- [17. Validating JSON with Serde](#17-validating-with--serde)
+- [22. Custom Extractor with Validation](#22-custom-extractors)
+
 
 ```HTTPie
 echo '{
@@ -1272,106 +1284,332 @@ pub fn create_routes() -> Router {
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/f76ea47a4fc1275b926a7707222a4770637ae3de)
 
 ## 18. Creating a Database
-```HTTPie
 
-```
+初始化 seaorm-axum 项目，新建 postgres 数据库
 
-新建文件 `api/.rs`
-
-```rust
-
-```
-
-<details><summary>变动 `api/mod.rs`</summary>
-
-```rust
-
-```
-</details>
-
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/8fe0dbf7f039e7529298e29e23aec21fef196980)
 
 ## 19. SeaORM
 
-```HTTPie
+https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime/
 
+
+```shell
+cargo add sea-orm -F sqlx-postgres -F runtime-tokio-rustls
+cargo add tokio -F macros -F rt-multi-thread
+cargo add axum -F headers
+cargo add tower-http -F cors  
+cargo add serde -F derive 
 ```
-
-新建文件 `api/.rs`
-
-```rust
-
-```
-
-<details><summary>变动 `api/mod.rs`</summary>
-
-```rust
-
-```
-</details>
-
-[代码变动](
 
 ## 20. Connecting SeaORM to the Database
 
-```HTTPie
-
+```shell
+touch .env
 ```
 
-新建文件 `api/.rs`
+写入
+
+```text
+DATABASE_URL=postgres://postgres:postgres@localhost/user_task
+```
+
+```shell
+cargo add dotenvy
+cargo add dotenvy_macro
+```
+
+新建文件 `main.rs`
 
 ```rust
+use dotenvy::dotenv;
+use dotenvy_macro::dotenv;
+use seaorm_axum::run;
 
+#[tokio::main]
+async fn main() {
+    dotenv().ok();
+    let database_uri = dotenv!("DATABASE_URL");
+    run(database_uri).await;
+}
 ```
 
-<details><summary>变动 `api/mod.rs`</summary>
+新建文件 `lib.rs`
 
 ```rust
+use sea_orm::Database;
 
+pub async fn run(database_uri: &str) {
+    let database = Database::connect(database_uri).await;
+}
 ```
-</details>
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/f82ed791b1a232ab56e304c2878599f62523a13f)
 
 ## 21. Generating SeaORM Models
+https://www.sea-ql.org/SeaORM/docs/generate-entity/sea-orm-cli/
 
-```HTTPie
-
+```shell
+❯ cargo install sea-orm-cli
+❯ sea-orm-cli -h 
+❯ sea-orm-cli generate -h
+❯ sea-orm-cli generate entity -h
+❯ sea-orm-cli generate entity -o src/database
+❯ sea-orm-cli generate entity -o src/databases                   
+Generating tasks.rs
+    > Column `id`: i32, auto_increment, not_null
+    > Column `priority`: Option<String>
+    > Column `title`: String, not_null
+    > Column `completed_at`: Option<DateTimeWithTimeZone>
+    > Column `description`: Option<String>
+    > Column `deleted_at`: Option<DateTimeWithTimeZone>
+    > Column `user_id`: Option<i32>
+    > Column `is_default`: Option<bool>
+Generating users.rs
+    > Column `id`: i32, auto_increment, not_null
+    > Column `username`: String, not_null, unique
+    > Column `password`: String, not_null
+    > Column `deleted_at`: Option<DateTimeWithTimeZone>
+    > Column `token`: Option<String>
 ```
-
-新建文件 `api/.rs`
-
-```rust
-
-```
-
-<details><summary>变动 `api/mod.rs`</summary>
-
-```rust
-
-```
-</details>
-
-[代码变动](
 
 ## 22. Custom Extractors
 
-```HTTPie
+Validate incoming data
+- [17. Validating JSON with Serde](#17-validating-with--serde)
+- [22. Custom Extractor with Validation](#22-custom-extractors)
 
-```
 
-新建文件 `api/.rs`
-
-```rust
-
-```
-
-<details><summary>变动 `api/mod.rs`</summary>
+新建文件夹 `api` 和 `api/mod.rs`
 
 ```rust
+pub mod custom_json_extractor;
 
+pub use custom_json_extractor::custom_json_extractor;
 ```
-</details>
+
+新建文件 `api/custom_json_extractor.rs`
+
+```rust
+pub async fn custom_json_extractor() {}
+```
+
+新建文件 `router.rs`
+
+```rust
+use axum::{routing::post, Router};
+use sea_orm::DatabaseConnection;
+
+use crate::api::custom_json_extractor;
+
+pub async fn create_routes(_database: DatabaseConnection) -> Router {
+    Router::new().route("/custom_json_extractor", post(custom_json_extractor))
+}
+```
+
+修改 `lib.rs`
+
+```rust
+pub mod api;
+mod router;
+
+use sea_orm::Database;
+
+pub async fn run(database_uri: &str) {
+    let database = Database::connect(database_uri).await.unwrap();
+    let app = router::create_routes(database).await;
+
+    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
+}
+```
+
+文档 Example 示例 https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html#what-is-the-b-type-parameter
+
+```rust
+use axum::{
+    async_trait,
+    extract::FromRequest,
+    http::{self, Request},
+};
+
+struct MyExtractor;
+
+#[async_trait]
+impl<S, B> FromRequest<S, B> for MyExtractor
+where
+    // these bounds are required by `async_trait`
+    B: Send + 'static,
+    S: Send + Sync,
+{
+    type Rejection = http::StatusCode;
+
+    async fn from_request(req: Request<B>, state: &S) -> Result<Self, Self::Rejection> {
+        // ...
+    }
+}
+```
+
+文档 https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html#impl-FromRequest%3CS%2C%20B%2C%20ViaRequest%3E-for-Json%3CT%3E
+
+```rust
+impl<T, S, B> FromRequest<S, B, ViaRequest> for Json<T>
+where
+    T: DeserializeOwned,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<BoxError>,
+    S: Send + Sync,
+```
+
+此时 `custom_json_extractor.rs` 文件
+
+```rust
+use axum::{
+    async_trait,
+    body::HttpBody,
+    extract::FromRequest,
+    http::{Request, StatusCode},
+    BoxError, Json, RequestExt,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize)]
+pub struct RequestUser {
+    pub username: String,
+    pub password: String,
+}
+
+#[async_trait]
+impl<S, B> FromRequest<S, B> for RequestUser
+where
+    S: Send + Sync,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<BoxError>,
+{
+    type Rejection = (StatusCode, String);
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+        let Json(user) = req
+            .extract::<Json<RequestUser>, _>()
+            .await
+            .map_err(|err| (StatusCode::BAD_REQUEST, format!("{}", err)))?;
+
+        Ok(user)
+    }
+}
+
+pub async fn custom_json_extractor(user: RequestUser) -> Json<RequestUser> {
+    Json(user)
+}
+```
+
+访问
+
+```shell
+curl -X POST \
+  'localhost:3000/custom_json_extractor' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer",
+  "password": "1234"
+}'
+```
+
+添加 [`validator` crate](https://crates.io/crates/validator)
+
+```shell
+cargo add validator -F derive
+```
+
+修改 `custom_json_extractor.rs`
+
+```rust
+use axum::{
+    async_trait,
+    body::HttpBody,
+    extract::FromRequest,
+    http::{Request, StatusCode},
+    BoxError, Json, RequestExt,
+};
+use serde::{Deserialize, Serialize};
+use validator::Validate;
+
+#[derive(Deserialize, Serialize, Validate)]
+pub struct RequestUser {
+    #[validate(email(message = "must be a valid email"))]
+    pub username: String,
+    #[validate(length(min = 6, message = "must be at least 6 characters"))]
+    pub password: String,
+}
+
+#[async_trait]
+impl<S, B> FromRequest<S, B> for RequestUser
+where
+    S: Send + Sync,
+    B: HttpBody + Send + 'static,
+    B::Data: Send,
+    B::Error: Into<BoxError>,
+{
+    type Rejection = (StatusCode, String);
+    async fn from_request(req: Request<B>, _state: &S) -> Result<Self, Self::Rejection> {
+        let Json(user) = req
+            .extract::<Json<RequestUser>, _>()
+            .await
+            .map_err(|err| (StatusCode::BAD_REQUEST, format!("{}", err)))?;
+
+        if let Err(err) = user.validate() {
+            return Err((StatusCode::BAD_REQUEST, err.to_string()));
+        }
+        Ok(user)
+    }
+}
+
+pub async fn custom_json_extractor(user: RequestUser) -> Json<RequestUser> {
+    Json(user)
+}
+```
+
+此时再访问 
+
+```shell
+curl -X POST \
+  'localhost:3000/custom_json_extractor' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer",
+  "password": "1234"
+}'
+```
+
+会报错
+
+```shell
+username: must be a valid email
+password: must be at least 6 characters
+```
+
+访问
+
+```shell
+curl -X POST \
+  'localhost:3000/custom_json_extractor' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer@email.com",
+  "password": "123456"
+}'
+```
+
+实现自定义提取器，可以在 `handler` 函数处理前进行预处理
 
 [代码变动](
 
