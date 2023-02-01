@@ -1456,13 +1456,15 @@ where
 文档 https://docs.rs/axum/latest/axum/extract/trait.FromRequest.html#impl-FromRequest%3CS%2C%20B%2C%20ViaRequest%3E-for-Json%3CT%3E
 
 ```rust
-impl<T, S, B> FromRequest<S, B, ViaRequest> for Json<T>
+impl<T, S, B> FromRequest<S, B> for Json<T>
 where
     T: DeserializeOwned,
     B: HttpBody + Send + 'static,
     B::Data: Send,
     B::Error: Into<BoxError>,
     S: Send + Sync,
+{
+    type Rejection = JsonRejection;
 ```
 
 此时 `custom_json_extractor.rs` 文件
@@ -1697,6 +1699,8 @@ curl -X POST \
   "code": -1
 }
 ```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/d91decf877aa9ef20db343801acc033693986eea#diff-509be60ef29964b4df481a6193b1821c6dd87cb6ab6afb5e61460d7913cd7b27)
 
 ## 23. Passing Data to Handlers
 
