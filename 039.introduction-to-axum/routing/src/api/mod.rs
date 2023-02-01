@@ -11,6 +11,7 @@ pub mod path_variable;
 pub mod query_params;
 pub mod returns_201;
 pub mod set_custom_middleware;
+pub mod validate_data;
 
 use always_errors::always_errors;
 use axum::{
@@ -31,6 +32,7 @@ use query_params::query_params;
 use returns_201::returns_201;
 use set_custom_middleware::set_custom_middleware;
 use tower_http::cors::{Any, CorsLayer};
+use validate_data::validate_data;
 
 #[derive(Clone)]
 pub struct SharedData {
@@ -61,4 +63,5 @@ pub fn create_routes() -> Router {
         .route("/always_errors", get(always_errors))
         .route("/returns_201", get(returns_201))
         .route("/get_json", get(get_json))
+        .route("/validate_data", post(validate_data))
 }
