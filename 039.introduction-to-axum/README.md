@@ -25,8 +25,17 @@
 - [21. Generating SeaORM Models](#21-generating-seaorm-models)
 - [22. Custom Extractors](#22-custom-extractors)
   - [延伸 验证失败，返回 200 和自定义 json 数据](#延伸-验证失败返回-200-和自定义-json-数据)
-- [23. Passing Data to Handlers](#23-passing-data-to-handlers)
+- [23. Passing Database to Handlers](#23-passing-database-to-handlers)
+  - [Create a row in the database](#create-a-row-in-the-database)
 - [24. Inserting to the Database](#24-inserting-to-the-database)
+  - [Get one item from the database](#get-one-item-from-the-database)
+  - [Get all items from the database](#get-all-items-from-the-database)
+  - [Using filters](#using-filters)
+  - [Atomic updates](#atomic-updates)
+  - [Path updates](#path-updates)
+  - [Deleting data](#deleting-data)
+  - [Soft-deleting data](#soft-deleting-data)
+  - [Handling nulls](#handling-nulls)
 - [25. Selecting One Item from the Database](#25-selecting-one-item-from-the-database)
 - [26. Get all from the Database](#26-get-all-from-the-database)
 - [27. Using SeaORM filters](#27-using-seaorm-filters)
@@ -1702,32 +1711,87 @@ curl -X POST \
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/d91decf877aa9ef20db343801acc033693986eea#diff-509be60ef29964b4df481a6193b1821c6dd87cb6ab6afb5e61460d7913cd7b27)
 
-## 23. Passing Data to Handlers
+## 23. Passing Database to Handlers
 
-```HTTPie
-
-```
-
-新建文件 `api/.rs`
+修改文件 `router.rs`
 
 ```rust
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
 
+use crate::api::custom_json_extractor;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .layer(Extension(database))
+}
+```
+
+CRUD data in the database including soft deleting
+
+### Create a row in the database
+
+新建文件  `api/create_task.rs`
+
+```rust
+use axum::Extension;
+use sea_orm::DatabaseConnection;
+
+pub async fn create_task(Extension(database): Extension<DatabaseConnection>) {}
 ```
 
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
+pub mod create_task;
+pub mod custom_json_extractor;
 
+pub use create_task::create_task;
+pub use custom_json_extractor::custom_json_extractor;
 ```
 </details>
+
+
+<details><summary>变动 `router.rs`</summary>
+
+```rust
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
+
+use crate::api::create_task;
+use crate::api::custom_json_extractor;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task))
+        .layer(Extension(database))
+}
+```
+</details>
+
+
 
 [代码变动](
 
 ## 24. Inserting to the Database
 
-```HTTPie
+### Get one item from the database
 
-```
+### Get all items from the database
+
+### Using filters
+
+### Atomic updates
+
+### Path updates
+
+### Deleting data
+
+### Soft-deleting data
+
+### Handling nulls
 
 新建文件 `api/.rs`
 
@@ -1735,12 +1799,6 @@ curl -X POST \
 
 ```
 
-<details><summary>变动 `api/mod.rs`</summary>
-
-```rust
-
-```
-</details>
 
 [代码变动](
 
