@@ -1924,24 +1924,105 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 ```
 </details>
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/712f7af656df78afbb938da4490a5843dba16fd9#diff-10f636c275bdac177c5ef1a24810acf13dc201ff0389d2bb332cd04d014b9b6d)
 
 ## 26. Get all from the Database
 
-```HTTPie
-
+```shell
+curl -X GET \
+  'http://localhost:3000/tasks' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)'
 ```
 
-新建文件 `api/.rs`
+文件 `api/get_one_task.rs` 重命名为 `api/get_tasks.rs`
 
 ```rust
+use axum::{extract::Path, http::StatusCode, Extension, Json};
+use sea_orm::{DatabaseConnection, EntityTrait};
+use serde::Serialize;
 
+use crate::databases::prelude::*;
+
+#[derive(Serialize)]
+pub struct ResponseTask {
+    id: i32,
+    title: String,
+    priority: Option<String>,
+    description: Option<String>,
+}
+
+pub async fn get_one_task(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<Json<ResponseTask>, StatusCode> {
+    let task = Tasks::find_by_id(task_id).one(&database).await.unwrap();
+
+    if let Some(task) = task {
+        return Ok(Json(ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+        }));
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+}
+
+pub async fn get_all_tasks(
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<Json<Vec<ResponseTask>>, StatusCode> {
+    let tasks = Tasks::find()
+        .all(&database)
+        .await
+        .map_err(|_err| StatusCode::INTERNAL_SERVER_ERROR)?
+        .into_iter()
+        .map(|db_task| ResponseTask {
+            id: db_task.id,
+            title: db_task.title,
+            priority: db_task.priority,
+            description: db_task.description,
+        })
+        .collect();
+    Ok(Json(tasks))
+}
 ```
 
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
+pub mod create_task;
+pub mod custom_json_extractor;
+pub mod get_tasks;
 
+pub use create_task::create_task;
+pub use custom_json_extractor::custom_json_extractor;
+pub use get_tasks::get_all_tasks;
+pub use get_tasks::get_one_task;
+```
+</details>
+
+
+<details><summary>变动 `api/router.rs`</summary>
+
+```rust
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
+
+use crate::api::create_task;
+use crate::api::custom_json_extractor;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route("/tasks/:task_id", get(get_one_task))
+        .layer(Extension(database))
+}
 ```
 </details>
 
