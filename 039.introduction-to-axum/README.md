@@ -28,15 +28,8 @@
 - [23. Passing Database to Handlers](#23-passing-database-to-handlers)
   - [Create a row in the database](#create-a-row-in-the-database)
 - [24. Inserting to the Database](#24-inserting-to-the-database)
-  - [Get one item from the database](#get-one-item-from-the-database)
-  - [Get all items from the database](#get-all-items-from-the-database)
-  - [Using filters](#using-filters)
-  - [Atomic updates](#atomic-updates)
-  - [Path updates](#path-updates)
-  - [Deleting data](#deleting-data)
-  - [Soft-deleting data](#soft-deleting-data)
-  - [Handling nulls](#handling-nulls)
 - [25. Selecting One Item from the Database](#25-selecting-one-item-from-the-database)
+  - [Get one item from the database](#get-one-item-from-the-database)
 - [26. Get all from the Database](#26-get-all-from-the-database)
 - [27. Using SeaORM filters](#27-using-seaorm-filters)
 - [28. Atomic Updates](#28-atomic-updates)
@@ -1817,52 +1810,117 @@ curl -X POST \
 修改 `api/create_task.rs`
 
 ```rust
+use axum::{Extension, Json};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
+use serde::Deserialize;
 
+use crate::databases::tasks;
+
+#[derive(Deserialize)]
+pub struct RequestTask {
+    priority: Option<String>,
+    title: String,
+    description: Option<String>,
+}
+
+pub async fn create_task(
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_task): Json<RequestTask>,
+) {
+    let new_task = tasks::ActiveModel {
+        priority: Set(request_task.priority),
+        title: Set(request_task.title),
+        description: Set(request_task.description),
+        ..Default::default()
+    };
+
+    let result = new_task.save(&database).await.unwrap();
+    dbg!(result);
+}
 ```
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/2ceadd53c238b61497b9535a24d0b2eba7f08a31#diff-85fa3b91e71fabf8b9c23f5553b4085c705df01315716b91af4be8db63b40e54)
 
-### Get one item from the database
-
-
-
-### Get all items from the database
-
-### Using filters
-
-### Atomic updates
-
-### Path updates
-
-### Deleting data
-
-### Soft-deleting data
-
-### Handling nulls
-
-新建文件 `api/.rs`
-
-```rust
-
-```
-
-
-[代码变动](
 
 ## 25. Selecting One Item from the Database
 
-```HTTPie
+### Get one item from the database
 
+```shell
+curl -X GET \
+  'http://localhost:3000/tasks/2' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)'
 ```
 
-新建文件 `api/.rs`
+新建文件 `api/get_one_task.rs`
 
 ```rust
+use axum::{extract::Path, http::StatusCode, Extension, Json};
+use sea_orm::{DatabaseConnection, EntityTrait};
+use serde::Serialize;
 
+use crate::databases::prelude::*;
+
+#[derive(Serialize)]
+pub struct ResponseTask {
+    id: i32,
+    title: String,
+    priority: Option<String>,
+    description: Option<String>,
+}
+
+pub async fn get_one_task(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<Json<ResponseTask>, StatusCode> {
+    let task = Tasks::find_by_id(task_id).one(&database).await.unwrap();
+
+    if let Some(task) = task {
+        return Ok(Json(ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+        }));
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+}
 ```
+
 
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
+pub mod create_task;
+pub mod custom_json_extractor;
+pub mod get_one_task;
 
+pub use create_task::create_task;
+pub use custom_json_extractor::custom_json_extractor;
+pub use get_one_task::get_one_task;
+```
+</details>
+
+
+<details><summary>变动 `router.rs`</summary>
+
+```rust
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
+
+use crate::api::create_task;
+use crate::api::custom_json_extractor;
+use crate::api::get_one_task;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task))
+        .route("/tasks/:task_id", get(get_one_task))
+        .layer(Extension(database))
+}
 ```
 </details>
 

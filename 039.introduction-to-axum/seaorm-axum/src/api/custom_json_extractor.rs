@@ -1,9 +1,5 @@
 use axum::{
-    async_trait,
-    body::HttpBody,
-    extract::FromRequest,
-    http::{Request, StatusCode},
-    BoxError, Json, RequestExt,
+    async_trait, body::HttpBody, extract::FromRequest, http::Request, BoxError, Json, RequestExt,
 };
 use serde::{Deserialize, Serialize};
 use validator::Validate;
