@@ -2627,34 +2627,157 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 ```
 </details>
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/2fc49646a527452fc4fd3816b3b4a6431f7f256e#diff-9078d48a20270c16be30a8de0e6f0f2a949585e677158e9ea63bc1927a7eb308)
 
 ## 31. Soft Deleting Data
 
 ```shell
+cargo add chrono -F serde
 ```
 
-新建文件 `api/.rs`
-
-```rust
-
+```shell
+curl -X DELETE \
+  'http://localhost:3000/tasks/5?soft=true' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)'
 ```
 
-<details><summary>变动 `api/mod.rs`</summary>
+修改文件 `api/delete_task.rs`
 
 ```rust
+use axum::{
+    extract::{Path, Query},
+    http::StatusCode,
+    Extension,
+};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, Set};
+use serde::Deserialize;
 
+use crate::databases::{prelude::*, tasks};
+
+#[derive(Deserialize)]
+pub struct QueryParams {
+    soft: bool,
+}
+
+pub async fn delete_task(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+    Query(query_params): Query<QueryParams>,
+) -> Result<(), StatusCode> {
+    if query_params.soft {
+        let mut task = if let Some(task) = Tasks::find_by_id(task_id)
+            .one(&database)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        {
+            task.into_active_model()
+        } else {
+            return Err(StatusCode::NOT_FOUND);
+        };
+        let now = chrono::Utc::now();
+        task.deleted_at = Set(Some(now.into()));
+        Tasks::update(task)
+            .exec(&database)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    } else {
+        Tasks::delete_many()
+            .filter(tasks::Column::Id.eq(task_id))
+            .exec(&database)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+    Ok(())
+}
+```
+
+<details><summary>变动 `api/get_tasks.rs` 查看 task 时过滤已经删除的</summary>
+
+```rust
+use axum::{
+    extract::{Path, Query},
+    http::StatusCode,
+    Extension, Json,
+};
+use chrono::{DateTime, FixedOffset};
+use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter};
+use serde::{Deserialize, Serialize};
+
+use crate::databases::{prelude::*, tasks};
+
+#[derive(Serialize)]
+pub struct ResponseTask {
+    id: i32,
+    title: String,
+    priority: Option<String>,
+    description: Option<String>,
+    deleted_at: Option<DateTime<FixedOffset>>,
+}
+
+pub async fn get_one_task(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<Json<ResponseTask>, StatusCode> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::DeletedAt.is_null())
+        .one(&database)
+        .await
+        .unwrap();
+
+    if let Some(task) = task {
+        return Ok(Json(ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            deleted_at: task.deleted_at,
+        }));
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+}
+
+#[derive(Deserialize)]
+pub struct GetTasksQueryParams {
+    priority: Option<String>,
+}
+
+pub async fn get_all_tasks(
+    Query(query_params): Query<GetTasksQueryParams>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<Json<Vec<ResponseTask>>, StatusCode> {
+    let mut priority_filter = Condition::all();
+
+    if let Some(priority) = query_params.priority {
+        priority_filter = if priority.is_empty() {
+            priority_filter.add(tasks::Column::Priority.is_null())
+        } else {
+            priority_filter.add(tasks::Column::Priority.eq(priority))
+        };
+    }
+
+    let tasks = Tasks::find()
+        .filter(tasks::Column::DeletedAt.is_null())
+        .filter(priority_filter)
+        .all(&database)
+        .await
+        .map_err(|_err| StatusCode::INTERNAL_SERVER_ERROR)?
+        .into_iter()
+        .map(|db_task| ResponseTask {
+            id: db_task.id,
+            title: db_task.title,
+            priority: db_task.priority,
+            description: db_task.description,
+            deleted_at: db_task.deleted_at,
+        })
+        .collect();
+    Ok(Json(tasks))
+}
 ```
 </details>
 
-<details><summary>变动 `router.rs`</summary>
-
-```rust
-
-```
-</details>
-
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/1e65a76831c1a16c505a74036dbe37c504292303)
 
 ## 32. Creating Account
 
