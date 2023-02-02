@@ -2493,30 +2493,137 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 ```
 </details>
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/6904b5aadd9f0c3c42a895ff2e4e48d88386ee9d#diff-6d92c5007265b65fd21e5a6833420455508e497ffcbf913bd987bf7ac26dd3a9)
 
 ## 30. Deleting Data 
 
 ```shell
+curl -X DELETE \
+  'http://localhost:3000/tasks/7' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)'
 ```
 
-新建文件 `api/.rs`
+新建文件 `api/delete_task.rs`
 
 ```rust
+use axum::{extract::Path, http::StatusCode, Extension};
+use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 
+use crate::databases::prelude::*;
+
+pub async fn delete_task(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<(), StatusCode> {
+    let task = if let Some(task) = Tasks::find_by_id(task_id)
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        task.into_active_model()
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+    Tasks::delete(task)
+        .exec(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+         
+    Ok(())
+}
+```
+
+另一种直接使用 `sea-orm` `delete_by_id()` 方法
+
+```rust
+use axum::{extract::Path, http::StatusCode, Extension};
+use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
+
+use crate::databases::prelude::*;
+
+pub async fn delete_task(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<(), StatusCode> {
+    Tasks::delete_by_id(task_id)
+        .exec(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(())
+}
+```
+
+删除多个 `delete_many()` 方法
+
+```rust
+use axum::{extract::Path, http::StatusCode, Extension};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
+
+use crate::databases::{prelude::*, tasks};
+
+pub async fn delete_task(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<(), StatusCode> {
+    Tasks::delete_many()
+        .filter(tasks::Column::Id.eq(task_id))
+        .exec(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(())
+}
 ```
 
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
+pub mod create_task;
+pub mod custom_json_extractor;
+pub mod get_tasks;
+pub mod partial_update;
+pub mod update_task;
+pub mod delete_task;
 
+pub use create_task::create_task;
+pub use custom_json_extractor::custom_json_extractor;
+pub use get_tasks::get_all_tasks;
+pub use get_tasks::get_one_task;
+pub use partial_update::partial_update;
+pub use update_task::atomic_update;
+pub use delete_task::delete_task;
 ```
 </details>
 
 <details><summary>变动 `router.rs`</summary>
 
 ```rust
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
 
+use crate::api::atomic_update;
+use crate::api::create_task;
+use crate::api::custom_json_extractor;
+use crate::api::delete_task;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+use crate::api::partial_update;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route(
+            "/tasks/:task_id",
+            get(get_one_task)
+                .put(atomic_update)
+                .patch(partial_update)
+                .delete(delete_task),
+        )
+        .layer(Extension(database))
+}
 ```
 </details>
 
