@@ -2202,30 +2202,106 @@ curl -X GET 'http://localhost:3000/tasks?priority'
 curl -X GET 'http://localhost:3000/tasks?priority=A'
 ```
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/39bc7db7a0dfa4612d36727f0b2ebcc8d68ac39c#diff-b7ce24afdae469f10c80072bbc07a5a510a66782e245de60ed591dfccbad4c62)
 
 ## 28. Atomic Updates
 
 ```shell
+curl -X PUT \
+  'http://localhost:3000/tasks/7' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw ' {
+    "id": 8,
+    "title": "I am an updated task",
+    "priority": "A"
+  }'
 ```
 
-新建文件 `api/.rs`
+新建文件 `api/update_task.rs`
 
 ```rust
+use axum::{extract::Path, http::StatusCode, Extension, Json};
+use sea_orm::{
+    prelude::DateTimeWithTimeZone, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
+};
+use serde::Deserialize;
 
+use crate::databases::{prelude::*, tasks};
+
+#[derive(Deserialize)]
+pub struct RequestTask {
+    pub id: Option<i32>,
+    pub priority: Option<String>,
+    pub title: String,
+    pub completed_at: Option<DateTimeWithTimeZone>,
+    pub description: Option<String>,
+    pub deleted_at: Option<DateTimeWithTimeZone>,
+    pub user_id: Option<i32>,
+    pub is_default: Option<bool>,
+}
+
+pub async fn atomic_update(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_task): Json<RequestTask>,
+) -> Result<(), StatusCode> {
+    let update_task = tasks::ActiveModel {
+        id: Set(task_id),
+        priority: Set(request_task.priority),
+        title: Set(request_task.title),
+        completed_at: Set(request_task.completed_at),
+        description: Set(request_task.description),
+        deleted_at: Set(request_task.deleted_at),
+        user_id: Set(request_task.user_id),
+        is_default: Set(request_task.is_default),
+    };
+    Tasks::update(update_task)
+        .filter(tasks::Column::Id.eq(task_id))
+        .exec(&database)
+        .await
+        .map_err(|_err| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(())
+}
 ```
 
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
+pub mod create_task;
+pub mod custom_json_extractor;
+pub mod get_tasks;
+pub mod update_task;
 
+pub use create_task::create_task;
+pub use custom_json_extractor::custom_json_extractor;
+pub use get_tasks::get_all_tasks;
+pub use get_tasks::get_one_task;
+pub use update_task::atomic_update;
 ```
 </details>
 
 <details><summary>变动 `router.rs`</summary>
 
 ```rust
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
 
+use crate::api::create_task;
+use crate::api::custom_json_extractor;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+use crate::api::atomic_update;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route("/tasks/:task_id", get(get_one_task).put(atomic_update))
+        .layer(Extension(database))
+}
 ```
 </details>
 
