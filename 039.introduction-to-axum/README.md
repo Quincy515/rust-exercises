@@ -1771,13 +1771,58 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 ```
 </details>
 
-
-
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/388af2579bcca5e5a63e5506b1560e5631d14758)
 
 ## 24. Inserting to the Database
 
+修改文件 `api/create_task.rs`
+
+```rust
+use axum::Extension;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
+use serde::Deserialize;
+
+use crate::databases::tasks;
+
+pub async fn create_task(Extension(database): Extension<DatabaseConnection>) {
+    let new_task = tasks::ActiveModel {
+        priority: Set(Some("A".to_owned())),
+        title: Set("My new title".to_owned()),
+        description: Set(Some("My new task description".to_owned())),
+        ..Default::default()
+    };
+
+    let result = new_task.save(&database).await.unwrap();
+    dbg!(result);
+}
+```
+
+此时发送 post 请求
+
+```shell
+curl -X POST \
+  'http://localhost:3000/tasks' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "title": "to something cool",
+  "description": "this task created by thunder client",
+  "priority": "A"
+}'
+```
+
+发现数据库新增了一条记录，但是 title、description 不是传入的数据，
+
+修改 `api/create_task.rs`
+
+```rust
+
+```
+
 ### Get one item from the database
+
+
 
 ### Get all items from the database
 
