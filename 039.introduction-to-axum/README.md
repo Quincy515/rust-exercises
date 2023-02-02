@@ -2206,6 +2206,8 @@ curl -X GET 'http://localhost:3000/tasks?priority=A'
 
 ## 28. Atomic Updates
 
+`PUT` 无论传入的内容，都是需要更新的，没有传入的就更新为空
+
 ```shell
 curl -X PUT \
   'http://localhost:3000/tasks/7' \
@@ -2305,30 +2307,189 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 ```
 </details>
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/0591bf9a02196b00428ccaab35836f2870d49343#diff-d78df8cae363562773bf22b88967a6c2c7c6e0e860917191f897ed030a2253d4)
 
 ## 29. Partial Updates
 
+`Patch` 如果一个非常大的 JSON，只想更新一两个字段，只传我们需要更改的
+
 ```shell
+curl -X PUT \
+  'http://localhost:3000/tasks/7' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw ' {
+    "priority": "B"
+  }'
 ```
 
-新建文件 `api/.rs`
+如果是 `PUT` 操作，id 为 7 的 task 的 title 和其他未传入的字段更新为空
+
+```shell
+curl -X PATCH \
+  'http://localhost:3000/tasks/7' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw ' {
+    "priority": "B"
+  }'
+```
+
+使用第三方库 `serde_with` 来确认 `description` 是像上面的没有传入
+
+还是像下面传入的是 `null`
+
+```shell
+curl -X PATCH \
+  'http://localhost:3000/tasks/7' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw ' {
+    "priority": "B"
+    "description": null
+  }'
+```
+
+如果只有一层 `description: Option<String>` 是无法确定的
+
+查看文档 https://docs.rs/serde_with/latest/serde_with/rust/double_option/index.html#examples
+
+```shell
+cargo add serde_with            
+```
+
+新建文件 `api/partial_update.rs`
 
 ```rust
+use axum::{extract::Path, http::StatusCode, Extension, Json};
+use sea_orm::{
+    prelude::DateTimeWithTimeZone, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel,
+    QueryFilter, Set,
+};
+use serde::Deserialize;
 
+use crate::databases::tasks;
+use crate::databases::tasks::Entity as Tasks;
+
+#[derive(Deserialize)]
+pub struct RequestTask {
+    pub id: Option<i32>,
+    #[serde(
+        default,                                    // <- important for deserialization
+        skip_serializing_if = "Option::is_none",    // <- important for serialization
+        with = "::serde_with::rust::double_option",
+    )]
+    pub priority: Option<Option<String>>,
+    pub title: Option<String>,
+    #[serde(
+        default,                                    // <- important for deserialization
+        skip_serializing_if = "Option::is_none",    // <- important for serialization
+        with = "::serde_with::rust::double_option",
+    )]
+    pub completed_at: Option<Option<DateTimeWithTimeZone>>,
+    #[serde(
+        default,                                    // <- important for deserialization
+        skip_serializing_if = "Option::is_none",    // <- important for serialization
+        with = "::serde_with::rust::double_option",
+    )]
+    pub description: Option<Option<String>>,
+    #[serde(
+        default,                                    // <- important for deserialization
+        skip_serializing_if = "Option::is_none",    // <- important for serialization
+        with = "::serde_with::rust::double_option",
+    )]
+    pub deleted_at: Option<Option<DateTimeWithTimeZone>>,
+}
+
+pub async fn partial_update(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_task): Json<RequestTask>,
+) -> Result<(), StatusCode> {
+    let mut db_task = if let Some(task) = Tasks::find_by_id(task_id)
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        task.into_active_model()
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+
+    if let Some(priority) = request_task.priority {
+        db_task.priority = Set(priority);
+    }
+    if let Some(description) = request_task.description {
+        db_task.description = Set(description);
+    }
+    if let Some(title) = request_task.title {
+        db_task.title = Set(title);
+    }
+    if let Some(completed_at) = request_task.completed_at {
+        db_task.completed_at = Set(completed_at);
+    }
+    if let Some(deleted_at) = request_task.deleted_at {
+        db_task.deleted_at = Set(deleted_at);
+    }
+
+    Tasks::update(db_task)
+        .filter(tasks::Column::Id.eq(task_id))
+        .exec(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(())
+}
 ```
+
+没有设置 `title` 为 `<Opiton<Option<String>>>` 
+
+所以 `title: null` 不会更新 `title`，而其他的会
 
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
+pub mod create_task;
+pub mod custom_json_extractor;
+pub mod get_tasks;
+pub mod partial_update;
+pub mod update_task;
 
+pub use create_task::create_task;
+pub use custom_json_extractor::custom_json_extractor;
+pub use get_tasks::get_all_tasks;
+pub use get_tasks::get_one_task;
+pub use partial_update::partial_update;
+pub use update_task::atomic_update;
 ```
 </details>
 
 <details><summary>变动 `router.rs`</summary>
 
 ```rust
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
 
+use crate::api::atomic_update;
+use crate::api::create_task;
+use crate::api::custom_json_extractor;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+use crate::api::partial_update;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route(
+            "/tasks/:task_id",
+            get(get_one_task).put(atomic_update).patch(partial_update),
+        )
+        .layer(Extension(database))
+}
 ```
 </details>
 
