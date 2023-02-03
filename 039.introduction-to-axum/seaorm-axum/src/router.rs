@@ -4,6 +4,7 @@ use sea_orm::DatabaseConnection;
 
 use crate::api::atomic_update;
 use crate::api::create_task;
+use crate::api::create_user;
 use crate::api::custom_json_extractor;
 use crate::api::delete_task;
 use crate::api::get_all_tasks;
@@ -21,5 +22,6 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
                 .patch(partial_update)
                 .delete(delete_task),
         )
+        .route("/users", post(create_user))
         .layer(Extension(database))
 }

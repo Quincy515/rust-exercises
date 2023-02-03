@@ -36,15 +36,23 @@
 - [29. Partial Updates](#29-partial-updates)
 - [30. Deleting Data](#30-deleting-data)
 - [31. Soft Deleting Data](#31-soft-deleting-data)
-- [32. Creating Account](#32-creating-account)
-- [33. Logging In](#33-logging-in)
-- [34. Guarding a Route](#34-guarding-a-route)
-- [35. Logging Out](#35-logging-out)
-- [36. Guarding in Middleware](#36-guarding-in-middleware)
-- [37. Hashing Passwords](#37-hashing-passwords)
-- [38. Using JWTs](#38-using-jwts)
-- [39. Custom Errors](#39-custom-errors)
+- [How auth works](#how-auth-works)
+  - [32. Creating Account](#32-creating-account)
+  - [33. Logging In](#33-logging-in)
+  - [34. Guarding a Route](#34-guarding-a-route)
+  - [35. Logging Out](#35-logging-out)
+  - [36. Guarding in Middleware](#36-guarding-in-middleware)
+- [Make auth secure](#make-auth-secure)
+  - [37. Hashing Passwords](#37-hashing-passwords)
+  - [38. Using JWTs](#38-using-jwts)
+- [Helper Utilities](#helper-utilities)
+  - [39. Custom Errors](#39-custom-errors)
 - [40. Deploying](#40-deploying)
+  - [Run the server in a Docker container](#run-the-server-in-a-docker-container)
+    - [Use a docker container for production](#use-a-docker-container-for-production)
+    - [Use a docker container for development](#use-a-docker-container-for-development)
+  - [Deploy the server](#deploy-the-server)
+    - [Directly to a VPS](#directly-to-a-vps)
 
 
 ## 1. Hello World
@@ -2779,34 +2787,123 @@ pub async fn get_all_tasks(
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/1e65a76831c1a16c505a74036dbe37c504292303)
 
-## 32. Creating Account
+## How auth works
+### 32. Creating Account
 
 ```shell
+curl -X POST \
+  'http://localhost:3000/users' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer",
+  "password": "1234"
+}'
 ```
 
-新建文件 `api/.rs`
+新建文件 `api/create_user.rs`
 
 ```rust
+use axum::{http::StatusCode, Extension, Json};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
+use serde::{Deserialize, Serialize};
 
+use crate::databases::users;
+
+#[derive(Deserialize)]
+pub struct RequestUser {
+    username: String,
+    password: String,
+}
+
+#[derive(Serialize)]
+pub struct ResponseUser {
+    username: String,
+    id: i32,
+    token: String,
+}
+
+pub async fn create_user(
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_user): Json<RequestUser>,
+) -> Result<Json<ResponseUser>, StatusCode> {
+    let new_user = users::ActiveModel {
+        username: Set(request_user.username),
+        password: Set(request_user.password),
+        token: Set(Some("null".to_owned())),
+        ..Default::default()
+    }
+    .save(&database)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(ResponseUser {
+        username: new_user.username.unwrap(),
+        id: new_user.id.unwrap(),
+        token: new_user.token.unwrap().unwrap(),
+    }))
+}
 ```
 
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
+pub mod create_task;
+pub mod create_user;
+pub mod custom_json_extractor;
+pub mod delete_task;
+pub mod get_tasks;
+pub mod partial_update;
+pub mod update_task;
 
+pub use create_task::create_task;
+pub use create_user::create_user;
+pub use custom_json_extractor::custom_json_extractor;
+pub use delete_task::delete_task;
+pub use get_tasks::get_all_tasks;
+pub use get_tasks::get_one_task;
+pub use partial_update::partial_update;
+pub use update_task::atomic_update;
 ```
 </details>
 
 <details><summary>变动 `router.rs`</summary>
 
 ```rust
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
 
+use crate::api::atomic_update;
+use crate::api::create_task;
+use crate::api::create_user;
+use crate::api::custom_json_extractor;
+use crate::api::delete_task;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+use crate::api::partial_update;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route(
+            "/tasks/:task_id",
+            get(get_one_task)
+                .put(atomic_update)
+                .patch(partial_update)
+                .delete(delete_task),
+        )
+        .route("/users", post(create_user))
+        .layer(Extension(database))
+}
 ```
 </details>
 
 [代码变动](
 
-## 33. Logging In
+### 33. Logging In
 
 新建文件 `api/.rs`
 
@@ -2822,7 +2919,7 @@ pub async fn get_all_tasks(
 
 [代码变动](
 
-## 34. Guarding a Route
+### 34. Guarding a Route
 
 新建文件 `api/.rs`
 
@@ -2838,7 +2935,7 @@ pub async fn get_all_tasks(
 
 [代码变动](
 
-## 35. Logging Out
+### 35. Logging Out
 
 新建文件 `api/.rs`
 
@@ -2854,7 +2951,7 @@ pub async fn get_all_tasks(
 
 [代码变动](
 
-## 36. Guarding in Middleware
+### 36. Guarding in Middleware
 
 新建文件 `api/.rs`
 
@@ -2870,7 +2967,8 @@ pub async fn get_all_tasks(
 
 [代码变动](
 
-## 37. Hashing Passwords
+## Make auth secure
+### 37. Hashing Passwords
 
 新建文件 `api/.rs`
 
@@ -2886,7 +2984,7 @@ pub async fn get_all_tasks(
 
 [代码变动](
 
-## 38. Using JWTs
+### 38. Using JWTs
 
 新建文件 `api/.rs`
 
@@ -2902,7 +3000,8 @@ pub async fn get_all_tasks(
 
 [代码变动](
 
-## 39. Custom Errors
+## Helper Utilities
+### 39. Custom Errors
 
 新建文件 `api/.rs`
 
@@ -2919,7 +3018,11 @@ pub async fn get_all_tasks(
 [代码变动](
 
 ## 40. Deploying
-
+### Run the server in a Docker container
+#### Use a docker container for production
+#### Use a docker container for development
+### Deploy the server
+#### Directly to a VPS
 新建文件 `api/.rs`
 
 ```rust
