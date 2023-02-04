@@ -3076,7 +3076,7 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 ```
 </details>
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/77f184df1683c3f443fee9f7de68ae103f442d1f#diff-028399f7e5bc9763b29cca3afa43685888672ec44cd30f4ff2cd7d1f52babe8b)
 
 ### 34. Guarding a Route
 
@@ -3259,29 +3259,177 @@ curl -X GET 'http://localhost:3000/tasks'
 ```
 </details>
 
-
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/πeb4620580a73814029a97d298288150d89418188#diff-85fa3b91e71fabf8b9c23f5553b4085c705df01315716b91af4be8db63b40e54)
 
 ### 35. Logging Out
 
-新建文件 `api/.rs`
-
-```rust
-
+```shell
+curl -X POST \
+  'http://localhost:3000/users/logout' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Authorization: Bearer new_token'
 ```
 
+修改文件 `api/users.rs` 添加 `logout` 函数
+
+```rust
+use axum::headers::authorization::Bearer;
+use axum::headers::Authorization;
+use axum::TypedHeader;
+use axum::{http::StatusCode, Extension, Json};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{IntoActiveModel, QueryFilter};
+use serde::{Deserialize, Serialize};
+
+use crate::databases::prelude::*;
+use crate::databases::users;
+
+#[derive(Deserialize)]
+pub struct RequestUser {
+    username: String,
+    password: String,
+}
+
+#[derive(Serialize)]
+pub struct ResponseUser {
+    username: String,
+    id: i32,
+    token: String,
+}
+
+pub async fn create_user(
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_user): Json<RequestUser>,
+) -> Result<Json<ResponseUser>, StatusCode> {
+    let new_user = users::ActiveModel {
+        username: Set(request_user.username),
+        password: Set(request_user.password),
+        token: Set(Some("null".to_owned())),
+        ..Default::default()
+    }
+    .save(&database)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(ResponseUser {
+        username: new_user.username.unwrap(),
+        id: new_user.id.unwrap(),
+        token: new_user.token.unwrap().unwrap(),
+    }))
+}
+
+pub async fn login(
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_user): Json<RequestUser>,
+) -> Result<Json<ResponseUser>, StatusCode> {
+    let db_user = Users::find()
+        .filter(users::Column::Username.eq(request_user.username))
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    if let Some(db_user) = db_user {
+        // login
+        let new_token = "new_token".to_owned();
+        let mut user = db_user.into_active_model();
+        user.token = Set(Some(new_token));
+        let saved_user = user
+            .save(&database)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        Ok(Json(ResponseUser {
+            username: saved_user.username.unwrap(),
+            id: saved_user.id.unwrap(),
+            token: saved_user.token.unwrap().unwrap(),
+        }))
+    } else {
+        Err(StatusCode::NOT_FOUND)
+    }
+}
+
+pub async fn logout(
+    authorization: TypedHeader<Authorization<Bearer>>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<(), StatusCode> {
+    let token = authorization.token();
+    let mut user = if let Some(user) = Users::find()
+        .filter(users::Column::Token.eq(token))
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        user.into_active_model()
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    user.token = Set(None);
+    user.save(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(())
+}
+```
 
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
+pub mod create_task;
+pub mod custom_json_extractor;
+pub mod delete_task;
+pub mod get_tasks;
+pub mod partial_update;
+pub mod update_task;
+pub mod users;
 
+pub use create_task::create_task;
+pub use custom_json_extractor::custom_json_extractor;
+pub use delete_task::delete_task;
+pub use get_tasks::get_all_tasks;
+pub use get_tasks::get_one_task;
+pub use partial_update::partial_update;
+pub use update_task::atomic_update;
+pub use users::create_user;
+pub use users::login;
+pub use users::logout;
 ```
 </details>
 
 <details><summary>变动 `router.rs`</summary>
 
 ```rust
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
 
+use crate::api::atomic_update;
+use crate::api::create_task;
+use crate::api::create_user;
+use crate::api::custom_json_extractor;
+use crate::api::delete_task;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+use crate::api::login;
+use crate::api::logout;
+use crate::api::partial_update;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route(
+            "/tasks/:task_id",
+            get(get_one_task)
+                .put(atomic_update)
+                .patch(partial_update)
+                .delete(delete_task),
+        )
+        .route("/users", post(create_user))
+        .route("/users/login", post(login))
+        .route("/users/logout", post(logout))
+        .layer(Extension(database))
+}
 ```
 </details>
 

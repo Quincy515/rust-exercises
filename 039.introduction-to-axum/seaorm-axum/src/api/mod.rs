@@ -15,3 +15,4 @@ pub use partial_update::partial_update;
 pub use update_task::atomic_update;
 pub use users::create_user;
 pub use users::login;
+pub use users::logout;

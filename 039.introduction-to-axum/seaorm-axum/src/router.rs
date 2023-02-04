@@ -10,6 +10,7 @@ use crate::api::delete_task;
 use crate::api::get_all_tasks;
 use crate::api::get_one_task;
 use crate::api::login;
+use crate::api::logout;
 use crate::api::partial_update;
 
 pub async fn create_routes(database: DatabaseConnection) -> Router {
@@ -25,5 +26,6 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         )
         .route("/users", post(create_user))
         .route("/users/login", post(login))
+        .route("/users/logout", post(logout))
         .layer(Extension(database))
 }

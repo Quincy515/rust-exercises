@@ -1,3 +1,6 @@
+use axum::headers::authorization::Bearer;
+use axum::headers::Authorization;
+use axum::TypedHeader;
 use axum::{http::StatusCode, Extension, Json};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Set};
 use sea_orm::{IntoActiveModel, QueryFilter};
@@ -67,4 +70,27 @@ pub async fn login(
     } else {
         Err(StatusCode::NOT_FOUND)
     }
+}
+
+pub async fn logout(
+    authorization: TypedHeader<Authorization<Bearer>>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<(), StatusCode> {
+    let token = authorization.token();
+    let mut user = if let Some(user) = Users::find()
+        .filter(users::Column::Token.eq(token))
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        user.into_active_model()
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    user.token = Set(None);
+    user.save(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(())
 }
