@@ -3080,26 +3080,185 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 
 ### 34. Guarding a Route
 
-新建文件 `api/.rs`
+```shell
+curl -X POST \
+  'http://localhost:3000/tasks' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Authorization: Bearer new_token' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "title": "to something cool",
+  "description": "this task created by thunder client",
+  "priority": "A"
+}'
+```
+
+修改 `api/create_task.rs` 文件，增加认证
 
 ```rust
+use axum::{
+    headers::{authorization::Bearer, Authorization},
+    http::StatusCode,
+    Extension, Json, TypedHeader,
+};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use serde::Deserialize;
 
+use crate::databases::{prelude::*, tasks, users};
+
+#[derive(Deserialize)]
+pub struct RequestTask {
+    priority: Option<String>,
+    title: String,
+    description: Option<String>,
+}
+
+pub async fn create_task(
+    Extension(database): Extension<DatabaseConnection>,
+    authorization: TypedHeader<Authorization<Bearer>>,
+    Json(request_task): Json<RequestTask>,
+) -> Result<(), StatusCode> {
+    let token = authorization.token();
+    let user = if let Some(user) = Users::find()
+        .filter(users::Column::Token.eq(Some(token)))
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        user
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    let new_task = tasks::ActiveModel {
+        priority: Set(request_task.priority),
+        title: Set(request_task.title),
+        description: Set(request_task.description),
+        user_id: Set(Some(user.id)),
+        ..Default::default()
+    };
+
+    let result = new_task.save(&database).await.unwrap();
+    dbg!(result);
+    Ok(())
+}
 ```
 
 
-<details><summary>变动 `api/mod.rs`</summary>
+<details><summary>变动 `api/get_tasks.rs`</summary>
 
 ```rust
+use axum::{
+    extract::{Path, Query},
+    http::StatusCode,
+    Extension, Json,
+};
+use chrono::{DateTime, FixedOffset};
+use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter};
+use serde::{Deserialize, Serialize};
 
+use crate::databases::{prelude::*, tasks};
+
+#[derive(Serialize)]
+pub struct ResponseTask {
+    id: i32,
+    title: String,
+    priority: Option<String>,
+    description: Option<String>,
+    deleted_at: Option<DateTime<FixedOffset>>,
+    user_id: Option<i32>,
+}
+
+pub async fn get_one_task(
+    Path(task_id): Path<i32>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<Json<ResponseTask>, StatusCode> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::DeletedAt.is_null())
+        .one(&database)
+        .await
+        .unwrap();
+
+    if let Some(task) = task {
+        return Ok(Json(ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            deleted_at: task.deleted_at,
+            user_id: task.user_id,
+        }));
+    } else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+}
+
+#[derive(Deserialize)]
+pub struct GetTasksQueryParams {
+    priority: Option<String>,
+}
+
+pub async fn get_all_tasks(
+    Query(query_params): Query<GetTasksQueryParams>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<Json<Vec<ResponseTask>>, StatusCode> {
+    let mut priority_filter = Condition::all();
+
+    if let Some(priority) = query_params.priority {
+        priority_filter = if priority.is_empty() {
+            priority_filter.add(tasks::Column::Priority.is_null())
+        } else {
+            priority_filter.add(tasks::Column::Priority.eq(priority))
+        };
+    }
+
+    let tasks = Tasks::find()
+        .filter(tasks::Column::DeletedAt.is_null())
+        .filter(priority_filter)
+        .all(&database)
+        .await
+        .map_err(|_err| StatusCode::INTERNAL_SERVER_ERROR)?
+        .into_iter()
+        .map(|db_task| ResponseTask {
+            id: db_task.id,
+            title: db_task.title,
+            priority: db_task.priority,
+            description: db_task.description,
+            deleted_at: db_task.deleted_at,
+            user_id: db_task.user_id,
+        })
+        .collect();
+    Ok(Json(tasks))
+}
+```
+
+```shell
+curl -X GET 'http://localhost:3000/tasks' 
+```
+
+```json
+[
+  {
+    "id": 2,
+    "title": "I am a task, you can complete me by checking the box",
+    "priority": "A",
+    "description": "This is my description",
+    "deleted_at": null,
+    "user_id": null
+  },
+  {
+    "id": 9,
+    "title": "to something cool",
+    "priority": "A",
+    "description": "this task created by thunder client",
+    "deleted_at": null,
+    "user_id": 2
+  }
+]
 ```
 </details>
 
-<details><summary>变动 `router.rs`</summary>
-
-```rust
-
-```
-</details>
 
 [代码变动](
 
