@@ -1,6 +1,6 @@
-| Youtube 视频  | 代码仓库 |
-|---|---|
-| https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS  |  https://github.com/brooks-builds/full-stack-todo-rust-course/blob/main/backend/rust/axum/README.md |
+| Youtube 视频                                                             | 代码仓库                                                                                           |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| https://www.youtube.com/playlist?list=PLrmY5pVcnuE-_CP7XZ_44HN-mDrLQV4nS | https://github.com/brooks-builds/full-stack-todo-rust-course/blob/main/backend/rust/axum/README.md |
 
 - [1. Hello World](#1-hello-world)
 - [2. Auto Restarting the Server](#2-auto-restarting-the-server)
@@ -54,8 +54,8 @@
   - [Deploy the server](#deploy-the-server)
     - [Directly to a VPS](#directly-to-a-vps)
 
-
 ## 1. Hello World
+
 ```shell
 cargo new hello-world
 cd hello-world
@@ -85,6 +85,7 @@ async fn main() {
 ```
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/586278b00b67c1861161b739425b3c4ffc7bd8ce)
+
 ## 2. Auto Restarting the Server
 
 全局安装 `cargo-watch`
@@ -94,6 +95,7 @@ cargo install cargo-watch
 ```
 
 执行命令
+
 ```shell
 ❯ cargo watch -x run
 [Running 'cargo run']
@@ -111,6 +113,7 @@ cargo watch -q -c -w src/ -x run
 - -x 执行 cargo 命令，默认执行 cargo check
 
 ## 3. Local Documentation
+
 使文档本地到项目中
 
 ```shell
@@ -119,7 +122,9 @@ cargo doc --open
 ```
 
 ## 4. Handing HTTP Methods
+
 新建 `lib.rs` 文件
+
 ```rust
 use axum::{routing::get, Router};
 
@@ -134,6 +139,7 @@ pub async fn run() {
 ```
 
 修改 `main.rs`
+
 ```rust
 use routing::run;
 
@@ -194,6 +200,7 @@ pub fn create_routes() -> Router {
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/0afa6d192a2938970b66c1fcee3665a771235ae1)
 
 ## 5. Extracting a String
+
 新建文件 `api/mirror_body_string.rs`
 
 ```rust
@@ -279,6 +286,7 @@ pub fn create_routes() -> Router {
         .route("/mirror_body_json", post(mirror_body_json))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/b83bf28f3a18b0ddec2f3af9a1b0c276993dc957)
@@ -325,6 +333,7 @@ pub fn create_routes() -> Router {
         .route("/path_variable/15", get(hard_coded_path))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/cc760776921edfc0c72902ee83996a7e5c9db357)
@@ -377,6 +386,7 @@ pub fn create_routes() -> Router {
         .route("/query_params", get(query_params))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/c4f848b0e8e39ae02df17f39ce3b230e3958213d)
@@ -431,6 +441,7 @@ pub fn create_routes() -> Router {
         .route("/mirror_user_agent", get(mirror_user_agent))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/fc41878f6409d1632bb94095136e01b1a2d4b454)
@@ -484,6 +495,7 @@ pub fn create_routes() -> Router {
         .route("/mirror_custom_header", get(mirror_custom_header))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/14002ef2148fff64fded743e3ce6cb908f08e45c)
@@ -536,6 +548,7 @@ pub fn create_routes() -> Router {
         .layer(cors)
 }
 ```
+
 </details>
 
 ## 12. Shared Middleware Data
@@ -604,13 +617,14 @@ pub fn create_routes() -> Router {
         .layer(cors)
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/2bad6b281178528354e6f9a97805dd4ff68c8916)
 
 ## 13. Custom Middleware
 
-> 目标： 
+> 目标：
 > 通过添加自定义中间件访问自定义的header
 
 新建文件 `api/custom_middleware.rs`
@@ -624,7 +638,6 @@ pub async fn custom_middleware(Extension(message): Extension<HeaderMessage>) -> 
     message.0
 }
 ```
-
 
 变动 `api/mod.rs`
 
@@ -731,7 +744,8 @@ Missing request extension: Extension of type `routing::api::custom_middleware::H
 
 因为缺少了 `axum::Extension` 新建一个 middleware 文件 `set_custom_middleware.rs`
 
-添加自定义 middleware 
+添加自定义 middleware
+
 - https://docs.rs/axum/latest/axum/middleware/index.html#writing-middleware
 - https://docs.rs/axum/latest/axum/middleware/fn.from_fn.html
 
@@ -887,7 +901,6 @@ pub fn create_routes() -> Router {
 }
 ```
 
-
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/a23c4ff5d0949df242341b66c5541d9668fbe3d2)
 
 ## 14. HTTP Status Codes
@@ -971,6 +984,7 @@ pub fn create_routes() -> Router {
         .route("/always_errors", get(always_errors))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/95eae93b7387d1dcd989765a4a3f286e4f1984d7)
@@ -978,7 +992,6 @@ pub fn create_routes() -> Router {
 ## 15. 200 HTTP Codes
 
 文档 [https://docs.rs/axum/latest/axum/response/index.html](https://docs.rs/axum/latest/axum/response/index.html#returning-different-response-types)
-
 
 ```HTTPie
 http GET localhost:3000/returns_201 \
@@ -1064,6 +1077,7 @@ pub fn create_routes() -> Router {
         .route("/returns_201", get(returns_201))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/c76d34c755c112ea9923bf4c58b5b9ed78475fd1)
@@ -1167,17 +1181,17 @@ pub fn create_routes() -> Router {
         .route("/get_json", get(get_json))
 }
 ```
-</details>
 
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/7938cdca49c6d0e4401f1d53168dd896429460b7)
 
 ## 17. Validating with Serde
 
 Validate incoming data
+
 - [17. Validating JSON with Serde](#17-validating-with--serde)
 - [22. Custom Extractor with Validation](#22-custom-extractors)
-
 
 ```HTTPie
 echo '{
@@ -1289,8 +1303,8 @@ pub fn create_routes() -> Router {
         .route("/validate_data", post(validate_data))
 }
 ```
-</details>
 
+</details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/f76ea47a4fc1275b926a7707222a4770637ae3de)
 
@@ -1303,7 +1317,6 @@ pub fn create_routes() -> Router {
 ## 19. SeaORM
 
 https://www.sea-ql.org/SeaORM/docs/install-and-config/database-and-async-runtime/
-
 
 ```shell
 cargo add sea-orm -F sqlx-postgres -F runtime-tokio-rustls
@@ -1358,6 +1371,7 @@ pub async fn run(database_uri: &str) {
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/f82ed791b1a232ab56e304c2878599f62523a13f)
 
 ## 21. Generating SeaORM Models
+
 https://www.sea-ql.org/SeaORM/docs/generate-entity/sea-orm-cli/
 
 ```shell
@@ -1366,7 +1380,7 @@ https://www.sea-ql.org/SeaORM/docs/generate-entity/sea-orm-cli/
 ❯ sea-orm-cli generate -h
 ❯ sea-orm-cli generate entity -h
 ❯ sea-orm-cli generate entity -o src/database
-❯ sea-orm-cli generate entity -o src/databases                   
+❯ sea-orm-cli generate entity -o src/databases               
 Generating tasks.rs
     > Column `id`: i32, auto_increment, not_null
     > Column `priority`: Option<String>
@@ -1387,9 +1401,9 @@ Generating users.rs
 ## 22. Custom Extractors
 
 Validate incoming data
+
 - [17. Validating JSON with Serde](#17-validating-with--serde)
 - [22. Custom Extractor with Validation](#22-custom-extractors)
-
 
 新建文件夹 `api` 和 `api/mod.rs`
 
@@ -1587,7 +1601,7 @@ pub async fn custom_json_extractor(user: RequestUser) -> Json<RequestUser> {
 }
 ```
 
-此时再访问 
+此时再访问
 
 ```shell
 curl -X POST \
@@ -1687,7 +1701,7 @@ pub async fn custom_json_extractor(user: RequestUser) -> Json<RequestUser> {
 }
 ```
 
-此时访问 
+此时访问
 
 ```shell
 curl -X POST \
@@ -1751,8 +1765,8 @@ pub mod custom_json_extractor;
 pub use create_task::create_task;
 pub use custom_json_extractor::custom_json_extractor;
 ```
-</details>
 
+</details>
 
 <details><summary>变动 `router.rs`</summary>
 
@@ -1770,6 +1784,7 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         .layer(Extension(database))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/388af2579bcca5e5a63e5506b1560e5631d14758)
@@ -1846,8 +1861,8 @@ pub async fn create_task(
     dbg!(result);
 }
 ```
-[代码变动](https://github.com/CusterFun/rust-exercises/commit/2ceadd53c238b61497b9535a24d0b2eba7f08a31#diff-85fa3b91e71fabf8b9c23f5553b4085c705df01315716b91af4be8db63b40e54)
 
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/2ceadd53c238b61497b9535a24d0b2eba7f08a31#diff-85fa3b91e71fabf8b9c23f5553b4085c705df01315716b91af4be8db63b40e54)
 
 ## 25. Selecting One Item from the Database
 
@@ -1896,7 +1911,6 @@ pub async fn get_one_task(
 }
 ```
 
-
 <details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
@@ -1908,8 +1922,8 @@ pub use create_task::create_task;
 pub use custom_json_extractor::custom_json_extractor;
 pub use get_one_task::get_one_task;
 ```
-</details>
 
+</details>
 
 <details><summary>变动 `router.rs`</summary>
 
@@ -1930,6 +1944,7 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         .layer(Extension(database))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/712f7af656df78afbb938da4490a5843dba16fd9#diff-10f636c275bdac177c5ef1a24810acf13dc201ff0389d2bb332cd04d014b9b6d)
@@ -2009,8 +2024,8 @@ pub use custom_json_extractor::custom_json_extractor;
 pub use get_tasks::get_all_tasks;
 pub use get_tasks::get_one_task;
 ```
-</details>
 
+</details>
 
 <details><summary>变动 `api/router.rs`</summary>
 
@@ -2032,6 +2047,7 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         .layer(Extension(database))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/510c0d03372fec15d6fff2891fb4f1eadfdee5b5#diff-b7ce24afdae469f10c80072bbc07a5a510a66782e245de60ed591dfccbad4c62)
@@ -2290,6 +2306,7 @@ pub use get_tasks::get_all_tasks;
 pub use get_tasks::get_one_task;
 pub use update_task::atomic_update;
 ```
+
 </details>
 
 <details><summary>变动 `router.rs`</summary>
@@ -2313,6 +2330,7 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         .layer(Extension(database))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/0591bf9a02196b00428ccaab35836f2870d49343#diff-d78df8cae363562773bf22b88967a6c2c7c6e0e860917191f897ed030a2253d4)
@@ -2366,7 +2384,7 @@ curl -X PATCH \
 查看文档 https://docs.rs/serde_with/latest/serde_with/rust/double_option/index.html#examples
 
 ```shell
-cargo add serde_with            
+cargo add serde_with        
 ```
 
 新建文件 `api/partial_update.rs`
@@ -2452,7 +2470,7 @@ pub async fn partial_update(
 }
 ```
 
-没有设置 `title` 为 `<Opiton<Option<String>>>` 
+没有设置 `title` 为 `<Opiton<Option<String>>>`
 
 所以 `title: null` 不会更新 `title`，而其他的会
 
@@ -2472,6 +2490,7 @@ pub use get_tasks::get_one_task;
 pub use partial_update::partial_update;
 pub use update_task::atomic_update;
 ```
+
 </details>
 
 <details><summary>变动 `router.rs`</summary>
@@ -2499,11 +2518,12 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         .layer(Extension(database))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/6904b5aadd9f0c3c42a895ff2e4e48d88386ee9d#diff-6d92c5007265b65fd21e5a6833420455508e497ffcbf913bd987bf7ac26dd3a9)
 
-## 30. Deleting Data 
+## 30. Deleting Data
 
 ```shell
 curl -X DELETE \
@@ -2537,7 +2557,7 @@ pub async fn delete_task(
         .exec(&database)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-         
+     
     Ok(())
 }
 ```
@@ -2602,6 +2622,7 @@ pub use partial_update::partial_update;
 pub use update_task::atomic_update;
 pub use delete_task::delete_task;
 ```
+
 </details>
 
 <details><summary>变动 `router.rs`</summary>
@@ -2633,6 +2654,7 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         .layer(Extension(database))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/2fc49646a527452fc4fd3816b3b4a6431f7f256e#diff-9078d48a20270c16be30a8de0e6f0f2a949585e677158e9ea63bc1927a7eb308)
@@ -2783,11 +2805,13 @@ pub async fn get_all_tasks(
     Ok(Json(tasks))
 }
 ```
+
 </details>
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/1e65a76831c1a16c505a74036dbe37c504292303)
 
 ## How auth works
+
 ### 32. Creating Account
 
 ```shell
@@ -2866,6 +2890,7 @@ pub use get_tasks::get_one_task;
 pub use partial_update::partial_update;
 pub use update_task::atomic_update;
 ```
+
 </details>
 
 <details><summary>变动 `router.rs`</summary>
@@ -2899,23 +2924,157 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         .layer(Extension(database))
 }
 ```
+
 </details>
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/42dc1e8856ed15c746eacb4a6043efa66cd40a92#diff-a2036bbb3c6676c2a638aa6c8a643178a95d0ac0e462a3586514a39411dca2fb)
 
 ### 33. Logging In
 
-新建文件 `api/.rs`
-
-```rust
-
+```shell
+curl -X POST \
+  'http://localhost:3000/login' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer",
+  "password": "1234"
+}'
 ```
 
-变动 `api/mod.rs`
+重命名文件 `api/create_user.rs` 为 `api/users.rs`
 
 ```rust
+use axum::{http::StatusCode, Extension, Json};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{IntoActiveModel, QueryFilter};
+use serde::{Deserialize, Serialize};
 
+use crate::databases::prelude::*;
+use crate::databases::users;
+
+#[derive(Deserialize)]
+pub struct RequestUser {
+    username: String,
+    password: String,
+}
+
+#[derive(Serialize)]
+pub struct ResponseUser {
+    username: String,
+    id: i32,
+    token: String,
+}
+
+pub async fn create_user(
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_user): Json<RequestUser>,
+) -> Result<Json<ResponseUser>, StatusCode> {
+    let new_user = users::ActiveModel {
+        username: Set(request_user.username),
+        password: Set(request_user.password),
+        token: Set(Some("null".to_owned())),
+        ..Default::default()
+    }
+    .save(&database)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(ResponseUser {
+        username: new_user.username.unwrap(),
+        id: new_user.id.unwrap(),
+        token: new_user.token.unwrap().unwrap(),
+    }))
+}
+
+pub async fn login(
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_user): Json<RequestUser>,
+) -> Result<Json<ResponseUser>, StatusCode> {
+    let db_user = Users::find()
+        .filter(users::Column::Username.eq(request_user.username))
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    if let Some(db_user) = db_user {
+        // login
+        let new_token = "new_token".to_owned();
+        let mut user = db_user.into_active_model();
+        user.token = Set(Some(new_token));
+        let saved_user = user
+            .save(&database)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        Ok(Json(ResponseUser {
+            username: saved_user.username.unwrap(),
+            id: saved_user.id.unwrap(),
+            token: saved_user.token.unwrap().unwrap(),
+        }))
+    } else {
+        Err(StatusCode::NOT_FOUND)
+    }
+}
 ```
+
+<details><summary>变动 `api/mod.rs`</summary>
+
+```rust
+pub mod create_task;
+pub mod custom_json_extractor;
+pub mod delete_task;
+pub mod get_tasks;
+pub mod partial_update;
+pub mod update_task;
+pub mod users;
+
+pub use create_task::create_task;
+pub use custom_json_extractor::custom_json_extractor;
+pub use delete_task::delete_task;
+pub use get_tasks::get_all_tasks;
+pub use get_tasks::get_one_task;
+pub use partial_update::partial_update;
+pub use update_task::atomic_update;
+pub use users::create_user;
+pub use users::login;
+```
+</details>
+
+<details><summary>变动 router.rs</summary>
+
+```rust
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
+
+use crate::api::atomic_update;
+use crate::api::create_task;
+use crate::api::create_user;
+use crate::api::custom_json_extractor;
+use crate::api::delete_task;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+use crate::api::login;
+use crate::api::partial_update;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route(
+            "/tasks/:task_id",
+            get(get_one_task)
+                .put(atomic_update)
+                .patch(partial_update)
+                .delete(delete_task),
+        )
+        .route("/users", post(create_user))
+        .route("/users/login", post(login))
+        .layer(Extension(database))
+}
+```
+</details>
 
 [代码变动](
 
@@ -2927,11 +3086,20 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 
 ```
 
-变动 `api/mod.rs`
+
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 
 ```
+</details>
+
+<details><summary>变动 `router.rs`</summary>
+
+```rust
+
+```
+</details>
 
 [代码变动](
 
@@ -2943,11 +3111,21 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 
 ```
 
-变动 `api/mod.rs`
+
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 
 ```
+</details>
+
+<details><summary>变动 `router.rs`</summary>
+
+```rust
+
+```
+</details>
+
 
 [代码变动](
 
@@ -2959,15 +3137,26 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 
 ```
 
-变动 `api/mod.rs`
+
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 
 ```
+</details>
+
+<details><summary>变动 `router.rs`</summary>
+
+```rust
+
+```
+</details>
+
 
 [代码变动](
 
 ## Make auth secure
+
 ### 37. Hashing Passwords
 
 新建文件 `api/.rs`
@@ -2976,11 +3165,21 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 
 ```
 
-变动 `api/mod.rs`
+
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 
 ```
+</details>
+
+<details><summary>变动 `router.rs`</summary>
+
+```rust
+
+```
+</details>
+
 
 [代码变动](
 
@@ -2992,15 +3191,26 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 
 ```
 
-变动 `api/mod.rs`
+
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 
 ```
+</details>
+
+<details><summary>变动 `router.rs`</summary>
+
+```rust
+
+```
+</details>
+
 
 [代码变动](
 
 ## Helper Utilities
+
 ### 39. Custom Errors
 
 新建文件 `api/.rs`
@@ -3009,20 +3219,35 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 
 ```
 
-变动 `api/mod.rs`
+<details><summary>变动 `api/mod.rs`</summary>
 
 ```rust
 
 ```
+</details>
+
+<details><summary>变动 `router.rs`</summary>
+
+```rust
+
+```
+</details>
+
 
 [代码变动](
 
 ## 40. Deploying
+
 ### Run the server in a Docker container
+
 #### Use a docker container for production
+
 #### Use a docker container for development
+
 ### Deploy the server
+
 #### Directly to a VPS
+
 新建文件 `api/.rs`
 
 ```rust

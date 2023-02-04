@@ -9,6 +9,7 @@ use crate::api::custom_json_extractor;
 use crate::api::delete_task;
 use crate::api::get_all_tasks;
 use crate::api::get_one_task;
+use crate::api::login;
 use crate::api::partial_update;
 
 pub async fn create_routes(database: DatabaseConnection) -> Router {
@@ -23,5 +24,6 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
                 .delete(delete_task),
         )
         .route("/users", post(create_user))
+        .route("/users/login", post(login))
         .layer(Extension(database))
 }
