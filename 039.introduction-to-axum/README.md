@@ -3433,34 +3433,133 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
 ```
 </details>
 
-
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/db41e5747b1ccc3a02698aae98bacd1c8859220e#diff-028399f7e5bc9763b29cca3afa43685888672ec44cd30f4ff2cd7d1f52babe8b)
 
 ### 36. Guarding in Middleware
 
-新建文件 `api/.rs`
+新建文件 `guard.rs`
 
 ```rust
+use axum::{
+    headers::{authorization::Bearer, Authorization, HeaderMapExt},
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::Response,
+};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 
+use crate::databases::prelude::*;
+use crate::databases::users;
+
+pub async fn guard<T>(mut request: Request<T>, next: Next<T>) -> Result<Response, StatusCode> {
+    let token = request
+        .headers()
+        .typed_get::<Authorization<Bearer>>()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .token()
+        .to_owned();
+    let database = request
+        .extensions()
+        .get::<DatabaseConnection>()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let user = Users::find()
+        .filter(users::Column::Token.eq(Some(token)))
+        .one(database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let Some(user) = user else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+    request.extensions_mut().insert(user);
+    Ok(next.run(request).await)
+}
 ```
-
-
-<details><summary>变动 `api/mod.rs`</summary>
-
-```rust
-
-```
-</details>
 
 <details><summary>变动 `router.rs`</summary>
 
 ```rust
+use axum::middleware;
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
 
+use crate::api::atomic_update;
+use crate::api::create_task;
+use crate::api::create_user;
+use crate::api::custom_json_extractor;
+use crate::api::delete_task;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+use crate::api::login;
+use crate::api::logout;
+use crate::api::partial_update;
+use crate::guard::guard;
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    Router::new()
+        .route("/users/logout", post(logout))
+        .route_layer(middleware::from_fn(guard))
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route(
+            "/tasks/:task_id",
+            get(get_one_task)
+                .put(atomic_update)
+                .patch(partial_update)
+                .delete(delete_task),
+        )
+        .route("/users", post(create_user))
+        .route("/users/login", post(login))
+        .layer(Extension(database))
+}
 ```
+
 </details>
 
+<details><summary>简化 `api/logout.rs`</summary>
 
-[代码变动](
+```rust
+pub async fn logout(
+    authorization: TypedHeader<Authorization<Bearer>>,
+    Extension(database): Extension<DatabaseConnection>,
+) -> Result<(), StatusCode> {
+    let token = authorization.token();
+    let mut user = if let Some(user) = Users::find()
+        .filter(users::Column::Token.eq(token))
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        user.into_active_model()
+    } else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+
+    user.token = Set(None);
+    user.save(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(())
+}
+```
+
+```rust
+pub async fn logout(
+    Extension(database): Extension<DatabaseConnection>,
+    Extension(user): Extension<Model>,
+) -> Result<(), StatusCode> {
+    let mut user = user.into_active_model();
+    user.token = Set(None);
+    user.save(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(())
+}
+```
+
+</details>
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/0c3a762e8e73e0eeb38fb7d678e9c4ee8a5b9223#diff-028399f7e5bc9763b29cca3afa43685888672ec44cd30f4ff2cd7d1f52babe8b)
 
 ## Make auth secure
 
