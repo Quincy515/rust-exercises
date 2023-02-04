@@ -1,3 +1,4 @@
+use axum::middleware;
 use axum::routing::get;
 use axum::{routing::post, Extension, Router};
 use sea_orm::DatabaseConnection;
@@ -12,9 +13,12 @@ use crate::api::get_one_task;
 use crate::api::login;
 use crate::api::logout;
 use crate::api::partial_update;
+use crate::guard::guard;
 
 pub async fn create_routes(database: DatabaseConnection) -> Router {
     Router::new()
+        .route("/users/logout", post(logout))
+        .route_layer(middleware::from_fn(guard))
         .route("/custom_json_extractor", post(custom_json_extractor))
         .route("/tasks", post(create_task).get(get_all_tasks))
         .route(
@@ -26,6 +30,5 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         )
         .route("/users", post(create_user))
         .route("/users/login", post(login))
-        .route("/users/logout", post(logout))
         .layer(Extension(database))
 }
