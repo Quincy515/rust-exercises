@@ -2,6 +2,7 @@ mod api;
 mod databases;
 mod guard;
 mod router;
+mod util;
 
 use sea_orm::Database;
 

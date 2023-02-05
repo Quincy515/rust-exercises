@@ -6,8 +6,8 @@ use axum::{
 };
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 
-use crate::databases::prelude::*;
 use crate::databases::users;
+use crate::{databases::prelude::*, util::jwt::is_valid};
 
 pub async fn guard<T>(mut request: Request<T>, next: Next<T>) -> Result<Response, StatusCode> {
     let token = request
@@ -21,10 +21,11 @@ pub async fn guard<T>(mut request: Request<T>, next: Next<T>) -> Result<Response
         .get::<DatabaseConnection>()
         .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
     let user = Users::find()
-        .filter(users::Column::Token.eq(Some(token)))
+        .filter(users::Column::Token.eq(Some(token.clone())))
         .one(database)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    is_valid(&token)?;
     let Some(user) = user else {
         return Err(StatusCode::UNAUTHORIZED);
     };

@@ -3691,31 +3691,249 @@ curl -X POST \
 }'
 ```
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/ea39d96ef50a7793307054fa04e6d28dadb9ff86#diff-028399f7e5bc9763b29cca3afa43685888672ec44cd30f4ff2cd7d1f52babe8b)
 
 ### 38. Using JWTs
 
-新建文件 `api/.rs`
-
-```rust
-
+```shell
+cargo add jsonwebtoken
 ```
 
+在 `.env` 文件中添加 `JWT_SECRET`
 
-<details><summary>变动 `api/mod.rs`</summary>
+```shell
+DATABASE_URL=postgres://postgres:postgres@localhost/user_task
+JWT_SECRET=custer
+```
+
+新建文件夹 `util` 和文件 `util/mod.rs`、`util/jwt.rs`
 
 ```rust
+use axum::http::StatusCode;
+use chrono::{Duration, Utc};
+use dotenvy_macro::dotenv;
+use jsonwebtoken::{encode, EncodingKey, Header};
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Claims {
+    exp: usize,
+    iat: usize,
+}
+
+pub fn create_jwt() -> Result<String, StatusCode> {
+    let mut now = Utc::now();
+    let iat = now.timestamp() as usize;
+    let expires_in = Duration::seconds(30);
+    now += expires_in;
+    let exp = now.timestamp() as usize;
+    let claim = Claims { exp, iat };
+    let secret: &'static str = dotenv!("JWT_SECRET");
+    let key = &EncodingKey::from_secret(secret.as_bytes());
+    encode(&Header::default(), &claim, &key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+pub fn is_valid() -> Result<bool, StatusCode> {
+    todo!()
+}
+```
+
+```rust
+pub mod jwt;
+```
+
+<details><summary>变动 `api/users.rs`</summary>
+
+```rust
+use axum::{http::StatusCode, Extension, Json};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Set};
+use sea_orm::{IntoActiveModel, QueryFilter};
+use serde::{Deserialize, Serialize};
+
+use crate::databases::prelude::*;
+use crate::databases::users::{self, Model};
+use crate::util::jwt::create_jwt;
+
+#[derive(Deserialize)]
+pub struct RequestUser {
+    username: String,
+    password: String,
+}
+
+#[derive(Serialize)]
+pub struct ResponseUser {
+    username: String,
+    id: i32,
+    token: String,
+}
+
+pub async fn create_user(
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_user): Json<RequestUser>,
+) -> Result<Json<ResponseUser>, StatusCode> {
+    let jwt = create_jwt()?;
+    let new_user = users::ActiveModel {
+        username: Set(request_user.username),
+        password: Set(hash_password(request_user.password)?),
+        token: Set(Some(jwt)),
+        ..Default::default()
+    }
+    .save(&database)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(ResponseUser {
+        username: new_user.username.unwrap(),
+        id: new_user.id.unwrap(),
+        token: new_user.token.unwrap().unwrap(),
+    }))
+}
+
+pub async fn login(
+    Extension(database): Extension<DatabaseConnection>,
+    Json(request_user): Json<RequestUser>,
+) -> Result<Json<ResponseUser>, StatusCode> {
+    let db_user = Users::find()
+        .filter(users::Column::Username.eq(request_user.username))
+        .one(&database)
+        .await
+        .map_err(|_| StatusCode::NOT_FOUND)?;
+
+    if let Some(db_user) = db_user {
+        if !verify_password(request_user.password, &db_user.password)? {
+            return Err(StatusCode::UNAUTHORIZED);
+        }
+        // login
+        let new_token = create_jwt()?;
+        let mut user = db_user.into_active_model();
+        user.token = Set(Some(new_token));
+        let saved_user = user
+            .save(&database)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        Ok(Json(ResponseUser {
+            username: saved_user.username.unwrap(),
+            id: saved_user.id.unwrap(),
+            token: saved_user.token.unwrap().unwrap(),
+        }))
+    } else {
+        Err(StatusCode::NOT_FOUND)
+    }
+}
+
+pub async fn logout(
+    Extension(database): Extension<DatabaseConnection>,
+    Extension(user): Extension<Model>,
+) -> Result<(), StatusCode> {
+    let mut user = user.into_active_model();
+    user.token = Set(None);
+    user.save(&database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(())
+}
+
+fn hash_password(password: String) -> Result<String, StatusCode> {
+    bcrypt::hash(password, 14).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+fn verify_password(password: String, hash_password: &str) -> Result<bool, StatusCode> {
+    bcrypt::verify(password, hash_password).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
 ```
 </details>
 
-<details><summary>变动 `router.rs`</summary>
+测试登录接口
+
+```shell
+curl -X POST \
+  'http://localhost:3000/users/login' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "CusterFun",
+  "password": "1234"
+}'
+```
+
+返回
+```json
+{
+  "username": "CusterFun",
+  "id": 4,
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzU2MDU0NTUsImlhdCI6MTY3NTYwNTQyNX0.VxpAxun3OhJFVy9wgKoEgfHUIwG-05PZupPkEREE9ic"
+}
+```
+
+添加文件 `util/jwt.rs` 中的 `is_valid` 方法
 
 ```rust
+pub fn is_valid(token: &str) -> Result<bool, StatusCode> {
+    let secret: &'static str = dotenv!("JWT_SECRET");
+    let key = DecodingKey::from_secret(secret.as_bytes());
 
+    decode::<Claims>(&token, &key, &Validation::new(Algorithm::HS256)).map_err(|err| match err
+        .kind()
+    {
+        jsonwebtoken::errors::ErrorKind::InvalidToken => StatusCode::UNAUTHORIZED,
+        jsonwebtoken::errors::ErrorKind::ExpiredSignature => StatusCode::UNAUTHORIZED,
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
+    })?;
+    Ok(true)
+}
+```
+在 `api/guard.rs` 中使用 `is_valid`
+
+<details><summary>变动 `api/guard.rs`</summary>
+
+```rust
+use axum::{
+    headers::{authorization::Bearer, Authorization, HeaderMapExt},
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::Response,
+};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+
+use crate::databases::users;
+use crate::{databases::prelude::*, util::jwt::is_valid};
+
+pub async fn guard<T>(mut request: Request<T>, next: Next<T>) -> Result<Response, StatusCode> {
+    let token = request
+        .headers()
+        .typed_get::<Authorization<Bearer>>()
+        .ok_or(StatusCode::BAD_REQUEST)?
+        .token()
+        .to_owned();
+    let database = request
+        .extensions()
+        .get::<DatabaseConnection>()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let user = Users::find()
+        .filter(users::Column::Token.eq(Some(token.clone()))) // change
+        .one(database)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    is_valid(&token)?; // new
+    let Some(user) = user else {
+        return Err(StatusCode::UNAUTHORIZED);
+    };
+    request.extensions_mut().insert(user);
+    Ok(next.run(request).await)
+}
 ```
 </details>
 
+使用 `logout` 接口测试 `token` 验证是否有效
+
+```shell
+curl -X POST \
+  'http://localhost:3000/users/logout' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzU2MDU0NTUsImlhdCI6MTY3NTYwNTQyNX0.VxpAxun3OhJFVy9wgKoEgfHUIwG-05PZupPkEREE9ic'
+```
 
 [代码变动](
 
