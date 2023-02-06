@@ -47,12 +47,6 @@
   - [38. Using JWTs](#38-using-jwts)
 - [Helper Utilities](#helper-utilities)
   - [39. Custom Errors](#39-custom-errors)
-- [40. Deploying](#40-deploying)
-  - [Run the server in a Docker container](#run-the-server-in-a-docker-container)
-    - [Use a docker container for production](#use-a-docker-container-for-production)
-    - [Use a docker container for development](#use-a-docker-container-for-development)
-  - [Deploy the server](#deploy-the-server)
-    - [Directly to a VPS](#directly-to-a-vps)
 
 ## 1. Hello World
 
@@ -4086,30 +4080,12 @@ curl -X POST \
   "message": "You token has expired"
 }
 ```
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/a6e298626615e529bac13c18776c9d69a5ef09af#diff-94c1cbfcd29ed607ba8e34134b6af98c01ad828887d7ead02e1c5b022b3214ca)
 
-## 40. Deploying
+部署 
 
-### Run the server in a Docker container
+```shell
+cargo install cross
 
-#### Use a docker container for production
-
-#### Use a docker container for development
-
-### Deploy the server
-
-#### Directly to a VPS
-
-新建文件 `api/.rs`
-
-```rust
-
+cross build --release --target x86_64-unknown-linux-musl
 ```
-
-变动 `api/mod.rs`
-
-```rust
-
-```
-
-[代码变动](
