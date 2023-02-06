@@ -3935,33 +3935,157 @@ curl -X POST \
   --header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzU2MDU0NTUsImlhdCI6MTY3NTYwNTQyNX0.VxpAxun3OhJFVy9wgKoEgfHUIwG-05PZupPkEREE9ic'
 ```
 
-[代码变动](
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/a8d48bba24389e8fafe7cd05afc2d241bc5a816b#diff-028399f7e5bc9763b29cca3afa43685888672ec44cd30f4ff2cd7d1f52babe8b)
 
 ## Helper Utilities
 
 ### 39. Custom Errors
+自定义错误结构，返回代码和 JSON 对象
 
-新建文件 `api/.rs`
+新建文件 `util/app_error.rs`
 
 ```rust
+use axum::{http::StatusCode, response::IntoResponse, Json};
+use serde::Serialize;
 
+pub struct AppError {
+    code: StatusCode,
+    message: String,
+}
+
+impl AppError {
+    pub fn new(code: StatusCode, message: impl Into<String>) -> Self {
+        AppError {
+            code,
+            message: message.into(),
+        }
+    }
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        (
+            self.code,
+            Json(ResponseMessage {
+                message: self.message,
+            }),
+        )
+            .into_response()
+    }
+}
+
+#[derive(Serialize)]
+struct ResponseMessage {
+    message: String,
+}
 ```
 
-<details><summary>变动 `api/mod.rs`</summary>
+<details><summary>变动 api/guard.rs 使用 AppError </summary>
 
 ```rust
+use axum::{
+    headers::{authorization::Bearer, Authorization, HeaderMapExt},
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::Response,
+};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 
+use crate::databases::users;
+use crate::util::app_error::AppError;
+use crate::{databases::prelude::*, util::jwt::is_valid};
+
+pub async fn guard<T>(mut request: Request<T>, next: Next<T>) -> Result<Response, AppError> {
+    let token = request
+        .headers()
+        .typed_get::<Authorization<Bearer>>()
+        .ok_or_else(|| AppError::new(StatusCode::BAD_REQUEST, "Missing Bearer token"))?
+        .token()
+        .to_owned();
+    let database = request
+        .extensions()
+        .get::<DatabaseConnection>()
+        .ok_or_else(|| AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"))?;
+    let user = Users::find()
+        .filter(users::Column::Token.eq(Some(token.clone())))
+        .one(database)
+        .await
+        .map_err(|err| AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+    is_valid(&token)?;
+    let Some(user) = user else {
+        return Err(AppError::new(StatusCode::UNAUTHORIZED, "You are not authorized"));
+    };
+    request.extensions_mut().insert(user);
+    Ok(next.run(request).await)
+}
 ```
 </details>
 
-<details><summary>变动 `router.rs`</summary>
+<details><summary>变动 `util/jwt.rs`</summary>
 
 ```rust
+use axum::http::StatusCode;
+use chrono::{Duration, Utc};
+use dotenvy_macro::dotenv;
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use serde::{Deserialize, Serialize};
 
+use super::app_error::AppError;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Claims {
+    exp: usize,
+    iat: usize,
+}
+
+pub fn create_jwt() -> Result<String, StatusCode> {
+    let mut now = Utc::now();
+    let iat = now.timestamp() as usize;
+    let expires_in = Duration::seconds(30);
+    now += expires_in;
+    let exp = now.timestamp() as usize;
+    let claim = Claims { exp, iat };
+    let secret: &'static str = dotenv!("JWT_SECRET");
+    let key = &EncodingKey::from_secret(secret.as_bytes());
+    encode(&Header::default(), &claim, &key).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+pub fn is_valid(token: &str) -> Result<bool, AppError> {
+    let secret: &'static str = dotenv!("JWT_SECRET");
+    let key = DecodingKey::from_secret(secret.as_bytes());
+
+    decode::<Claims>(&token, &key, &Validation::new(Algorithm::HS256)).map_err(|err| match err
+        .kind()
+    {
+        jsonwebtoken::errors::ErrorKind::InvalidToken => AppError::new(
+            StatusCode::UNAUTHORIZED,
+            "You are not authorized to access this resource",
+        ),
+        jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+            AppError::new(StatusCode::UNAUTHORIZED, "You token has expired")
+        }
+        _ => AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+    })?;
+    Ok(true)
+}
 ```
 </details>
 
+此时访问 `logout` 
 
+```shell
+curl -X POST \
+  'http://localhost:3000/users/logout' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzU2MDc1NzIsImlhdCI6MTY3NTYwNzU0Mn0.IWicGF3k1mFC5H4V7Wzq1GpzkCGYZuBTbxIbl67xtug'
+```
+返回
+```json
+{
+  "message": "You token has expired"
+}
+```
 [代码变动](
 
 ## 40. Deploying
