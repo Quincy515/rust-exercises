@@ -73,16 +73,18 @@ cross build --release --target x86_64-unknown-linux-musl
 
 ## 2.Hello World
 
-<p>
+<pre>
 ├─ src 
 │  ├─ api 
-│  │  ├─ <details><summary>mod.rs</summary>
+│  │  ├─ mod.rs
+<details><summary>mod.rs</summary>
 
 ```rust
 pub mod hello;
 ```
 </details>
-│  │  └─ <details><summary>hello.rs</summary>
+│  │  └─ hello.rs
+<details><summary>hello.rs</summary>
 
 ```rust
 pub async fn hello() -> String {
@@ -90,7 +92,8 @@ pub async fn hello() -> String {
 }
 ```
 </details>
-│  ├─ <details><summary>main.rs</summary>
+│  ├─ main.rs
+<details><summary>main.rs</summary>
 
 ```rust
 use dotenvy::dotenv;
@@ -103,7 +106,8 @@ async fn main() {
 }
 ```
 </details>
-│  ├─ <details><summary>router.rs</summary>
+│  ├─ router.rs
+<details><summary>router.rs</summary>
 
 ```rust
 use axum::{routing::get, Router};
@@ -115,7 +119,8 @@ pub async fn create_router() -> Router {
 }
 ```
 </details>
-│  └─ <details><summary>lib.rs</summary>
+│  └─ lib.rs
+<details><summary>lib.rs</summary>
 
 ```rust
 use dotenvy_macro::dotenv;
@@ -133,7 +138,8 @@ pub async fn run() {
 }
 ```
 </details>
-└─ <details><summary>Cargo.toml</summary>
+└─ Cargo.toml
+<details><summary>Cargo.toml</summary>
 
 ```toml
 [package]
@@ -158,4 +164,4 @@ tower-http = {version = "0.3.5", features = ["cors"]}
 validator = {version = "0.16.0", features = ["derive"]}
 ```
 </details>
-</p>
+</pre>
