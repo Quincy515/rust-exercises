@@ -80,10 +80,20 @@ cross build --release --target x86_64-unknown-linux-musl
 │  │  └─ hello.rs
 │  ├─ main.rs
 │  ├─ router.rs
-│  └─ lib.rs
+│  ├─ lib.rs
+│  └─ .env
 └─ Cargo.toml
 ```
 代码详情
+<details><summary>.env</summary>
+
+```text
+exprot API_PORT=3000
+export API_URI=http://localhost
+export JWT_SECRET=jwt_secret
+export DATABASE_URL=postgres://postgres:postgres@localhost/axum_yew_todo
+```
+</details>
 <details><summary>mod.rs</summary>
 
 ```rust
