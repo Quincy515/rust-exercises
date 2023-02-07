@@ -47,6 +47,8 @@
   - [38. Using JWTs](#38-using-jwts)
 - [Helper Utilities](#helper-utilities)
   - [39. Custom Errors](#39-custom-errors)
+- [40. Deploy](#40-deploy)
+- [41. From Extension to State(FromRef)](#41-from-extension-to-statefromref)
 
 ## 1. Hello World
 
@@ -4082,10 +4084,63 @@ curl -X POST \
 ```
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/a6e298626615e529bac13c18776c9d69a5ef09af#diff-94c1cbfcd29ed607ba8e34134b6af98c01ad828887d7ead02e1c5b022b3214ca)
 
-部署 
+## 40. Deploy
 
 ```shell
 cargo install cross
 
 cross build --release --target x86_64-unknown-linux-musl
 ```
+
+## 41. From Extension to State(FromRef)
+
+目前是使用 `Extension` 来放置共享数据
+
+```rust
+.layer(Extension(shared_data))
+```
+
+修改为 `State`，注意 `SharedData` 需要有 `Clone` trait
+
+```rust
+.with_state(shared_data)
+```
+
+更改使用
+
+```rust
+pub async fn middleware_message(Extension(shared_data): Extension<SharedData>) -> String {
+    shared_data.message
+}
+```
+
+为 
+
+```rust
+pub async fn middleware_message(State(state): State<SharedData>) -> String {
+    state.message
+}
+```
+
+不使用 `state` 可以直接传递 `state` 中的 `message` 吗？
+
+```rust
+pub async fn middleware_message(State(message): State<String>) -> String {
+    message
+}
+```
+
+```shell
+cargo add axum -F macros
+```
+
+给 `SharedData` 添加 `FromRef` 宏
+
+```rust
+#[derive(Clone, FromRef)]
+type struct SharedData {
+    pub message: String,
+}
+```
+
+
