@@ -1,3 +1,4 @@
+use axum::extract::State;
 use axum::{http::StatusCode, Extension, Json};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, Set};
 use sea_orm::{IntoActiveModel, QueryFilter};
@@ -21,7 +22,8 @@ pub struct ResponseUser {
 }
 
 pub async fn create_user(
-    Extension(database): Extension<DatabaseConnection>,
+    // Extension(database): Extension<DatabaseConnection>,
+    State(database): State<DatabaseConnection>,
     Json(request_user): Json<RequestUser>,
 ) -> Result<Json<ResponseUser>, StatusCode> {
     let jwt = create_jwt()?;
@@ -43,7 +45,8 @@ pub async fn create_user(
 }
 
 pub async fn login(
-    Extension(database): Extension<DatabaseConnection>,
+    // Extension(database): Extension<DatabaseConnection>,
+    State(database): State<DatabaseConnection>,
     Json(request_user): Json<RequestUser>,
 ) -> Result<Json<ResponseUser>, StatusCode> {
     let db_user = Users::find()
@@ -75,7 +78,8 @@ pub async fn login(
 }
 
 pub async fn logout(
-    Extension(database): Extension<DatabaseConnection>,
+    // Extension(database): Extension<DatabaseConnection>,
+    State(database): State<DatabaseConnection>,
     Extension(user): Extension<Model>,
 ) -> Result<(), StatusCode> {
     let mut user = user.into_active_model();

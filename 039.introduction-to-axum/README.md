@@ -49,6 +49,9 @@
   - [39. Custom Errors](#39-custom-errors)
 - [40. Deploy](#40-deploy)
 - [41. From Extension to State(FromRef)](#41-from-extension-to-statefromref)
+- [42. Put DatabaseConnection to AppState](#42-put-databaseconnection-to-appstate)
+  - [Update handlers to pull in State](#update-handlers-to-pull-in-state)
+  - [Update guard middleware to use extractors directly](#update-guard-middleware-to-use-extractors-directly)
 
 ## 1. Hello World
 
@@ -4143,4 +4146,172 @@ type struct SharedData {
 }
 ```
 
+## 42. Put DatabaseConnection to AppState
+
+修改 `router.rs`
+```rust
+use axum::extract::FromRef;
+use axum::middleware;
+use axum::routing::get;
+use axum::{routing::post, Extension, Router};
+use sea_orm::DatabaseConnection;
+
+use crate::api::atomic_update;
+use crate::api::create_task;
+use crate::api::create_user;
+use crate::api::custom_json_extractor;
+use crate::api::delete_task;
+use crate::api::get_all_tasks;
+use crate::api::get_one_task;
+use crate::api::login;
+use crate::api::logout;
+use crate::api::partial_update;
+use crate::guard::guard;
+
+#[derive(Clone, FromRef)]
+pub struct AppState {
+    pub database: DatabaseConnection,
+}
+
+pub async fn create_routes(database: DatabaseConnection) -> Router {
+    let app_state = AppState { database };
+    Router::new()
+        .route("/users/logout", post(logout))
+        .route_layer(middleware::from_fn(guard))
+        .route("/custom_json_extractor", post(custom_json_extractor))
+        .route("/tasks", post(create_task).get(get_all_tasks))
+        .route(
+            "/tasks/:task_id",
+            get(get_one_task)
+                .put(atomic_update)
+                .patch(partial_update)
+                .delete(delete_task),
+        )
+        .route("/users", post(create_user))
+        .route("/users/login", post(login))
+        // .layer(Extension(database))
+        .with_state(app_state)
+}
+```
+### Update handlers to pull in State
+
+此时发送 curl 创建用户
+
+```shell
+curl -X POST \
+  'http://localhost:3000/users' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer1",
+  "password": "1234"
+}'
+```
+
+`axum` 会报错
+
+```shell
+Missing request extension: Extension of type `sea_orm::database::db_connection::DatabaseConnection` was not found. Perhaps you forgot to add it? See `axum::Extension`.
+```
+
+修改所有的
+
+```rust
+Extension(database): Extension<DatabaseConnection>,
+```
+
+更改为 
+
+```rust
+State(database): State<DatabaseConnection>,
+```
+
+### Update guard middleware to use extractors directly
+
+<details><summary> api/guard.rs 更改前为 </summary>
+
+```rust
+use axum::{
+    headers::{authorization::Bearer, Authorization, HeaderMapExt},
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::Response,
+};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+
+use crate::databases::users;
+use crate::util::app_error::AppError;
+use crate::{databases::prelude::*, util::jwt::is_valid};
+
+pub async fn guard<T>(mut request: Request<T>, next: Next<T>) -> Result<Response, AppError> {
+    let token = request
+        .headers()
+        .typed_get::<Authorization<Bearer>>()
+        .ok_or_else(|| AppError::new(StatusCode::BAD_REQUEST, "Missing Bearer token"))?
+        .token()
+        .to_owned();
+    let database = request
+        .extensions()
+        .get::<DatabaseConnection>()
+        .ok_or_else(|| AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error"))?;
+    let user = Users::find()
+        .filter(users::Column::Token.eq(Some(token.clone())))
+        .one(database)
+        .await
+        .map_err(|err| AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+    is_valid(&token)?;
+    let Some(user) = user else {
+        return Err(AppError::new(StatusCode::UNAUTHORIZED, "You are not authorized"));
+    };
+    request.extensions_mut().insert(user);
+    Ok(next.run(request).await)
+}
+```
+</details>
+
+使用 `axum` 提供的 `from_fn_state` 函数
+```rust
+.route_layer(middleware::from_fn(guard))
+```
+
+```rust
+.route_layer(middleware::from_fn_with_state(guard))
+```
+
+```rust
+use axum::{
+    extract::State,
+    headers::{authorization::Bearer, Authorization},
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::Response,
+    TypedHeader,
+};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+
+use crate::databases::users;
+use crate::util::app_error::AppError;
+use crate::{databases::prelude::*, util::jwt::is_valid};
+
+pub async fn guard<T>(
+    State(database): State<DatabaseConnection>,
+    TypedHeader(token): TypedHeader<Authorization<Bearer>>,
+    mut request: Request<T>,
+    next: Next<T>,
+) -> Result<Response, AppError> {
+    let token = token.token().to_owned();
+    let user = Users::find()
+        .filter(users::Column::Token.eq(Some(token.clone())))
+        .one(&database)
+        .await
+        .map_err(|err| AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+    is_valid(&token)?;
+    let Some(user) = user else {
+        return Err(AppError::new(StatusCode::UNAUTHORIZED, "You are not authorized"));
+    };
+    request.extensions_mut().insert(user);
+    Ok(next.run(request).await)
+}
+```
 

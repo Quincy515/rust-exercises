@@ -1,6 +1,7 @@
+use axum::extract::FromRef;
 use axum::middleware;
 use axum::routing::get;
-use axum::{routing::post, Extension, Router};
+use axum::{routing::post, Router};
 use sea_orm::DatabaseConnection;
 
 use crate::api::atomic_update;
@@ -15,10 +16,16 @@ use crate::api::logout;
 use crate::api::partial_update;
 use crate::guard::guard;
 
+#[derive(Clone, FromRef)]
+pub struct AppState {
+    pub database: DatabaseConnection,
+}
+
 pub async fn create_routes(database: DatabaseConnection) -> Router {
+    let app_state = AppState { database };
     Router::new()
         .route("/users/logout", post(logout))
-        .route_layer(middleware::from_fn(guard))
+        .route_layer(middleware::from_fn_with_state(app_state.clone(), guard))
         .route("/custom_json_extractor", post(custom_json_extractor))
         .route("/tasks", post(create_task).get(get_all_tasks))
         .route(
@@ -30,5 +37,6 @@ pub async fn create_routes(database: DatabaseConnection) -> Router {
         )
         .route("/users", post(create_user))
         .route("/users/login", post(login))
-        .layer(Extension(database))
+        // .layer(Extension(database))
+        .with_state(app_state)
 }

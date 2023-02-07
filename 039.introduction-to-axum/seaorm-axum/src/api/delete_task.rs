@@ -1,7 +1,6 @@
 use axum::{
-    extract::{Path, Query},
+    extract::{Path, Query, State},
     http::StatusCode,
-    Extension,
 };
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, Set};
 use serde::Deserialize;
@@ -15,7 +14,8 @@ pub struct QueryParams {
 
 pub async fn delete_task(
     Path(task_id): Path<i32>,
-    Extension(database): Extension<DatabaseConnection>,
+    // Extension(database): Extension<DatabaseConnection>,
+    State(database): State<DatabaseConnection>,
     Query(query_params): Query<QueryParams>,
 ) -> Result<(), StatusCode> {
     /*

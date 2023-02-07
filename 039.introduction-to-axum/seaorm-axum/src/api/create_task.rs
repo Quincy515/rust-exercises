@@ -1,7 +1,8 @@
 use axum::{
+    extract::State,
     headers::{authorization::Bearer, Authorization},
     http::StatusCode,
-    Extension, Json, TypedHeader,
+    Json, TypedHeader,
 };
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::Deserialize;
@@ -16,7 +17,8 @@ pub struct RequestTask {
 }
 
 pub async fn create_task(
-    Extension(database): Extension<DatabaseConnection>,
+    // Extension(database): Extension<DatabaseConnection>,
+    State(database): State<DatabaseConnection>,
     authorization: TypedHeader<Authorization<Bearer>>,
     Json(request_task): Json<RequestTask>,
 ) -> Result<(), StatusCode> {
