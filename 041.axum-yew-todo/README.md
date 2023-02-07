@@ -73,17 +73,24 @@ cross build --release --target x86_64-unknown-linux-musl
 
 ## 2.Hello World
 
-<pre>
+```shell
 ├─ src 
 │  ├─ api 
 │  │  ├─ mod.rs
+│  │  └─ hello.rs
+│  ├─ main.rs
+│  ├─ router.rs
+│  └─ lib.rs
+└─ Cargo.toml
+```
+代码详情
 <details><summary>mod.rs</summary>
 
 ```rust
 pub mod hello;
 ```
 </details>
-│  │  └─ hello.rs
+
 <details><summary>hello.rs</summary>
 
 ```rust
@@ -92,7 +99,7 @@ pub async fn hello() -> String {
 }
 ```
 </details>
-│  ├─ main.rs
+
 <details><summary>main.rs</summary>
 
 ```rust
@@ -106,7 +113,7 @@ async fn main() {
 }
 ```
 </details>
-│  ├─ router.rs
+
 <details><summary>router.rs</summary>
 
 ```rust
@@ -119,7 +126,7 @@ pub async fn create_router() -> Router {
 }
 ```
 </details>
-│  └─ lib.rs
+
 <details><summary>lib.rs</summary>
 
 ```rust
@@ -138,7 +145,7 @@ pub async fn run() {
 }
 ```
 </details>
-└─ Cargo.toml
+
 <details><summary>Cargo.toml</summary>
 
 ```toml
@@ -164,4 +171,3 @@ tower-http = {version = "0.3.5", features = ["cors"]}
 validator = {version = "0.16.0", features = ["derive"]}
 ```
 </details>
-</pre>
