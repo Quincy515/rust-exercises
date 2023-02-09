@@ -1,5 +1,10 @@
 - [1.Introduce the project](#1introduce-the-project)
 - [2.Hello World](#2hello-world)
+- [3.Create User](#3create-user)
+  - [nest router](#nest-router)
+  - [Response user](#response-user)
+  - [Database URL](#database-url)
+  - [Creating user](#creating-user)
 
 ## 1.Introduce the project
 
@@ -28,7 +33,7 @@ code .env
 exprot API_PORT=3000
 export API_URI=http://localhost
 export JWT_SECRET=jwt_secret
-export DATABASE_URL=postgres://postgres:postgres@localhost/axum_yew_todo
+export DATABASE_URL=postgres://postgres:postgres@localhost/user_task
 ```
 
 ```shell
@@ -89,9 +94,9 @@ cross build --release --target x86_64-unknown-linux-musl
 
 ```text
 exprot API_PORT=3000
-export API_URI=http://localhost
+export API_URI=0.0.0.0
 export JWT_SECRET=jwt_secret
-export DATABASE_URL=postgres://postgres:postgres@localhost/axum_yew_todo
+export DATABASE_URL=postgres://postgres:postgres@localhost/user_task
 ```
 </details>
 <details><summary>mod.rs</summary>
@@ -181,3 +186,311 @@ tower-http = {version = "0.3.5", features = ["cors"]}
 validator = {version = "0.16.0", features = ["derive"]}
 ```
 </details>
+
+`curl` 请求
+
+```shell
+curl -X GET 'localhost:3000' 
+```
+
+## 3.Create User
+### nest router
+https://docs.rs/axum/latest/axum/routing/struct.Router.html#method.nest
+
+修改 `router.rs`
+
+```rust
+use axum::{routing::get, Router};
+
+use crate::api::hello::hello;
+
+pub async fn create_router() -> Router {
+    let user_routes = Router::new().route("/", get(|| async {}));
+    
+    let task_routes = Router::new().route("/", get(|| async {}));
+
+    let api_routes = Router::new()
+        .nest("/users", user_routes)
+        .nest("/tasks", task_routes);
+
+    Router::new()
+        .route("/", get(hello))
+        .nest("/api/v1/", api_routes)
+}
+```
+### Response user
+新建外部的 `crate` 保存数据模型和请求返回的数据结构，为了以后可以和 `yew` 通用
+
+```shell
+cargo new --lib types
+cd types
+cargo add serde -F derive
+cargo add serde_json
+```
+
+在 `types` 项目中新建 `user.rs` 并修改 `lib.rs`
+
+```rust
+pub mod user;
+```
+
+```rust
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct ResponseUser {
+    pub data: Option<bool>,
+}
+```
+
+然后在 `server` 项目中使用
+
+```toml
+types = { path="../types" }
+```
+
+新建文件夹 `api/users` 和文件 `api/users/mod.rs` 、 `api/users/create_user.rs`
+
+```rust
+use axum::Json;
+use types::user::ResponseUser;
+
+pub async fn create_user() -> Json<ResponseUser> {
+    let response = ResponseUser { data: Some(true) };
+    Json(response)
+}
+```
+
+<details><summary>修改 api/users/mod.rs </summary>
+
+```rust
+pub mod create_user;
+```
+</details>
+
+<details><summary>修改 router.rs </summary>
+
+```rust
+use axum::{
+    routing::{get, post},
+    Router,
+};
+
+use crate::api::{hello::hello, users::create_user::create_user};
+
+pub async fn create_router() -> Router {
+    let user_routes = Router::new().route("/", post(create_user));
+
+    let task_routes = Router::new().route("/", get(|| async {}));
+
+    let api_routes = Router::new()
+        .nest("/users", user_routes)
+        .nest("/tasks", task_routes);
+
+    Router::new()
+        .route("/", get(hello))
+        .nest("/api/v1/", api_routes)
+}
+```
+</details>
+
+此时访问 curl
+
+```shell
+curl -X POST 'localhost:3000/api/v1/users'
+```
+
+返回
+
+```json
+{
+  "data": true
+}
+```
+
+### Database URL
+
+在 `server` 目录下运行 
+
+```shell
+sea-orm-cli generate entity -l -o ../entity/src
+cd ../entity
+cargo init
+cargo add sea-orm
+cargo add serde -F derive
+```
+
+然后在 `server/Cargo.toml` 中添加 
+
+```toml
+entity = {path = "../entity"}
+```
+
+### Creating user
+
+增加创建用的返回结构体，修改 `types/src/user.rs`
+
+```rust
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+pub struct ResponseDataUser {
+    pub data: ResponseUser,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ResponseUser {
+    pub id: i32,
+    pub username: String,
+    pub token: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct RequestCreateUser {
+    pub username: String,
+    pub password: String,
+}
+```
+新建 `util/mod.rs` 和 `util/app_error.rs`
+
+```rust
+use axum::{http::StatusCode, response::IntoResponse, Json};
+use serde::{Deserialize, Serialize};
+
+pub struct AppError {
+    code: StatusCode,
+    message: String,
+}
+
+impl AppError {
+    pub fn new(code: StatusCode, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+        }
+    }
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> axum::response::Response {
+        (
+            self.code,
+            Json(ErrorResponse {
+                error: self.message.clone(),
+            }),
+        )
+            .into_response()
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct ErrorResponse {
+    error: String,
+}
+```
+
+新建 `app_state.rs`
+
+在 `axum` 中使用 `state` 文档 https://docs.rs/axum/latest/axum/extract/struct.State.html
+
+```rust
+use axum::extract::FromRef;
+use sea_orm::DatabaseConnection;
+
+#[derive(Clone, FromRef)]
+pub struct AppState {
+    pub db: DatabaseConnection,
+}
+```
+
+在 `router.rs` 中传递 `state` 
+
+```rust
+use axum::{
+    middleware,
+    routing::{get, post},
+    Router,
+};
+
+use crate::{
+    api::{hello::hello, users::create_user::create_user},
+    app_state::AppState,
+};
+
+pub async fn create_router(app_state: AppState) -> Router {
+    let user_routes = Router::new()
+        .route("/", post(create_user))
+        .with_state(app_state);
+
+    let task_routes = Router::new().route("/", get(|| async {}));
+
+    let api_routes = Router::new()
+        .nest("/users", user_routes)
+        .nest("/tasks", task_routes);
+
+    Router::new()
+        .route("/", get(hello))
+        .nest("/api/v1/", api_routes)
+}
+```
+
+修改 `server/src/api/users/create_user.rs`
+
+```rust
+use axum::{extract::State, http::StatusCode, Json};
+use entity::users;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set};
+use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
+
+use crate::util::app_error::AppError;
+
+pub async fn create_user(
+    State(db): State<DatabaseConnection>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let mut new_user = users::ActiveModel {
+        ..Default::default()
+    };
+    new_user.username = Set(request_user.username);
+    new_user.password = Set(request_user.password);
+    let user = new_user.save(&db).await.map_err(|error| {
+        eprintln!("Error creating user: {:?}", error);
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
+    })?;
+
+    Ok(Json(ResponseDataUser {
+        data: ResponseUser {
+            id: user.id.unwrap(),
+            username: user.username.unwrap(),
+            token: user.token.unwrap().unwrap_or_default(),
+        },
+    }))
+}
+```
+
+使用 curl 测试
+
+```shell
+curl -X POST \
+  'http://localhost:3000/api/v1/users' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer",
+  "password": "1234"
+}'
+```
+
+返回 Json
+
+```json
+{
+  "data": {
+    "id": 9,
+    "username": "Custer3",
+    "token": ""
+  }
+}
+```
+

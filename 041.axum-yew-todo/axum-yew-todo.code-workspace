@@ -1,0 +1,14 @@
+{
+  "folders": [
+	{
+		"path": "server"
+	},
+	{
+		"path": "types"
+	},
+	{
+		"path": "entity"
+	}
+],
+  "settings": {}
+}
