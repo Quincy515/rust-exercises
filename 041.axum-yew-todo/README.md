@@ -8,6 +8,7 @@
   - [Json Web Token](#json-web-token)
   - [Hash password](#hash-password)
 - [4. Handing Duplicate Usernames](#4-handing-duplicate-usernames)
+- [5. Singing in](#5-singing-in)
 
 ## 1.Introduce the project
 
@@ -865,3 +866,136 @@ pub async fn create_user(
   "error": "Username already taken, try again with a different user name"
 }
 ```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/41fd05a18961897ec6b3701d6809898af96e737f#diff-ee6af3e44180d400670d53d2b574ab6e4526b5a568a6d40c244b0db1b7f4f0bb)
+
+## 5. Singing in
+
+新建用户登录的路由 `api/users/login.rs`
+
+```rust
+use axum::{extract::State, http::StatusCode, Json};
+use entity::{prelude::*, users};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    Set, TryIntoModel,
+};
+use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
+
+use crate::util::{app_error::AppError, hash::verify_password, jwt::create_token};
+
+pub async fn login(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let user = Users::find()
+        .filter(users::Column::Username.eq(request_user.username.as_str()))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting user for logging in: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error loggin in")
+        })?;
+
+    if let Some(user) = user {
+        if !verify_password(&request_user.password, &user.password)? {
+            return Err(AppError::new(
+                StatusCode::UNAUTHORIZED,
+                "bad username or password",
+            ));
+        }
+        let token = create_token(&secret, user.username.clone())?;
+        let mut user = user.into_active_model();
+        user.token = Set(Some(token));
+        let user = user
+            .save(&db)
+            .await
+            .map_err(|err| {
+                eprintln!("Error saving user token: {:?}", err);
+                AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error saving user token")
+            })?
+            .try_into_model()
+            .map_err(|err| {
+                eprintln!("Error converting model to active model: {:?}", err);
+                AppError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error converting model to active model",
+                )
+            })?;
+        let response = ResponseUser {
+            id: user.id,
+            username: user.username,
+            token: user.token.unwrap_or_default(),
+        };
+
+        Ok(Json(ResponseDataUser { data: response }))
+    } else {
+        Err(AppError::new(StatusCode::NOT_FOUND, "User not found"))
+    }
+}
+```
+
+这里需要验证密码，在 `util/hash.rs` 中添加 `verify_password` 函数
+
+```rust
+use axum::http::StatusCode;
+use bcrypt::{hash, verify};
+
+use crate::util::app_error::AppError;
+pub fn hash_password(password: &str) -> Result<String, AppError> {
+    hash(password.as_bytes(), bcrypt::DEFAULT_COST).map_err(|err| {
+        eprintln!("Error hashing password: {err:?}");
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error securing password")
+    })
+}
+
+pub fn verify_password(password: &str, hash: &str) -> Result<bool, AppError> {
+    verify(password, hash).map_err(|err| {
+        eprintln!("Error verifying password: {err:?}");
+        AppError::new(
+            StatusCode::BAD_REQUEST,
+            "There was an error verifying the password",
+        )
+    })
+}
+```
+
+增加 `api/v1/users/login` 路由，修改 `router.rs`
+
+<details>
+
+```rust
+use axum::{
+    routing::{get, post},
+    Router,
+};
+
+use crate::{
+    api::{
+        hello::hello,
+        users::{create_user::create_user, login::login},
+    },
+    app_state::AppState,
+};
+
+pub async fn create_router(app_state: AppState) -> Router {
+    let user_routes = Router::new()
+        .route("/", post(create_user))
+        .route("/login", post(login))
+        .with_state(app_state);
+
+    let task_routes = Router::new().route("/", get(|| async {}));
+
+    let api_routes = Router::new()
+        .nest("/users", user_routes)
+        .nest("/tasks", task_routes);
+
+    Router::new()
+        .route("/", get(hello))
+        .nest("/api/v1/", api_routes)
+}
+```
+</details>
+
+[代码变动]()
