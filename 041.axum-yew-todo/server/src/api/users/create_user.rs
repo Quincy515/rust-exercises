@@ -3,10 +3,11 @@ use entity::users;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
 use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
 
-use crate::util::app_error::AppError;
+use crate::util::{app_error::AppError, jwt::create_token};
 
 pub async fn create_user(
     State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
     Json(request_user): Json<RequestCreateUser>,
 ) -> Result<Json<ResponseDataUser>, AppError> {
     let mut new_user = users::ActiveModel {
@@ -14,6 +15,7 @@ pub async fn create_user(
     };
     new_user.username = Set(request_user.username);
     new_user.password = Set(request_user.password);
+    new_user.token = Set(Some(create_token(&secret)?));
     let user = new_user
         .save(&db)
         .await

@@ -5,6 +5,7 @@
   - [Response user](#response-user)
   - [Database URL](#database-url)
   - [Creating user](#creating-user)
+  - [Json Web Token](#json-web-token)
 
 ## 1.Introduce the project
 
@@ -512,6 +513,8 @@ pub async fn create_user(
 }
 ```
 
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/f1abc92839b14a80fdb4d35555eccbdcad3b26a1#diff-ee6af3e44180d400670d53d2b574ab6e4526b5a568a6d40c244b0db1b7f4f0bb)
+
 使用 curl 测试
 
 ```shell
@@ -541,5 +544,142 @@ curl -X POST \
 [ 代码变动 ](https://github.com/CusterFun/rust-exercises/commit/f1e97ca1c79960f98463097bd633e18978d9752b)
 
 
+### Json Web Token
 
+修改 `app_state.rs` 增加 `jwt_secret` 
+```rust
+use axum::extract::FromRef;
+use sea_orm::DatabaseConnection;
 
+#[derive(Clone, FromRef)]
+pub struct AppState {
+    pub db: DatabaseConnection,
+    pub jwt_secret: String,
+}
+```
+在 `main.rs` 中获取 `.env` 中设置的 `jwt_secret` 并保存到 `AppState` 中
+
+```rust
+use dotenvy::dotenv;
+use dotenvy_macro::dotenv;
+use sea_orm::Database;
+use server::{app_state::AppState, run};
+
+#[tokio::main]
+async fn main() {
+    dotenv().ok();
+    let database_url: &str = dotenv!("DATABASE_URL");
+    let jwt_secret: String = dotenv!("JWT_SECRET").to_owned();
+    let db = match Database::connect(database_url).await {
+        Ok(db) => db,
+        Err(err) => {
+            eprintln!("Error connecting to the databases: {:?}", err);
+            std::process::exit(1);
+        }
+    };
+    let app_state = AppState { db, jwt_secret };
+    run(app_state).await;
+}
+```
+
+在 `util` 目录中新建 `jwt.rs` 来处理 `token` 的创建和认证
+
+```rust
+use axum::http::StatusCode;
+use chrono::Duration;
+use jsonwebtoken::{encode, EncodingKey, Header};
+use serde::{Deserialize, Serialize};
+
+use super::app_error::AppError;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Claims {
+    exp: usize,
+}
+
+pub fn create_token(secret: &str) -> Result<String, AppError> {
+    let now = chrono::Utc::now();
+    let expires_at = now + Duration::hours(1);
+    let exp = expires_at.timestamp() as usize;
+    let claims = Claims { exp };
+    let token_header = Header::default();
+    let key = EncodingKey::from_secret(secret.as_bytes());
+    encode(&token_header, &claims, &key).map_err(|err| {
+        eprintln!("Error creating token: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "There was an error creating the token",
+        )
+    })
+}
+```
+
+这样就可以在 `api/create_user.rs` 中使用
+
+```rust
+use axum::{extract::State, http::StatusCode, Json};
+use entity::users;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
+use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
+
+use crate::util::{app_error::AppError, jwt::create_token};
+
+pub async fn create_user(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let mut new_user = users::ActiveModel {
+        ..Default::default()
+    };
+    new_user.username = Set(request_user.username);
+    new_user.password = Set(request_user.password);
+    new_user.token = Set(Some(create_token(&secret)?));
+    let user = new_user
+        .save(&db)
+        .await
+        .map_err(|error| {
+            eprintln!("Error creating user: {:?}", error);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
+        })?
+        .try_into_model()
+        .map_err(|err| {
+            eprintln!("Error converting user back into model: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+        })?;
+
+    Ok(Json(ResponseDataUser {
+        data: ResponseUser {
+            id: user.id,
+            username: user.username,
+            token: user.token.unwrap_or_default(),
+        },
+    }))
+}
+```
+
+使用 curl 创建新用户
+
+```shell
+curl -X POST \
+  'http://localhost:3000/api/v1/users' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer7",
+  "password": "1234"
+}'
+```
+
+返回 Json
+
+```json
+{
+  "data": {
+    "id": 15,
+    "username": "Custer7",
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzYwODk2NTl9.0fbI5BOiXSa9tc27l2sT-TvCVyFgfSMbvH4bhNS8XGY"
+  }
+}
+```
