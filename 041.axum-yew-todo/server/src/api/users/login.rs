@@ -55,6 +55,9 @@ pub async fn login(
 
         Ok(Json(ResponseDataUser { data: response }))
     } else {
-        Err(AppError::new(StatusCode::NOT_FOUND, "User not found"))
+        Err(AppError::new(
+            StatusCode::BAD_REQUEST,
+            "bad username or password",
+        ))
     }
 }

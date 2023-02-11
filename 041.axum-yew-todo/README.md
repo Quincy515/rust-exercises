@@ -998,4 +998,32 @@ pub async fn create_router(app_state: AppState) -> Router {
 ```
 </details>
 
-[代码变动]()
+发送 curl 请求
+
+```shell
+curl -X POST \
+  'http://localhost:3000/api/v1/users/login' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer8",
+  "password": "1234"
+}'
+```
+
+得到 Json 返回的数据
+
+```json
+{
+  "data": {
+    "id": 16,
+    "username": "Custer8",
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzYxMjE3NzYsInVzZXJuYW1lIjoiQ3VzdGVyOCJ9.A2Hmu0-JCsiB0FKYpbGMSLf4WLFt05y4-WJHihXf_Sg"
+  }
+}
+```
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/aba92eb508b688f7e4353736fa5d2575e2a2c6f4#diff-b5e833372dd39ee133868d12218c692a73c4ac09998fd7ec61ed61adc8e9c940)
+
+
+
