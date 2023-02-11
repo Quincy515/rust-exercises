@@ -4,6 +4,7 @@ use app_state::AppState;
 
 mod api;
 pub mod app_state;
+mod middleware;
 mod router;
 mod util;
 

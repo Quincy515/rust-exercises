@@ -9,6 +9,7 @@
   - [Hash password](#hash-password)
 - [4. Handing Duplicate Usernames](#4-handing-duplicate-usernames)
 - [5. Singing in](#5-singing-in)
+- [6. Logging out](#6-logging-out)
 
 ## 1.Introduce the project
 
@@ -1025,5 +1026,199 @@ curl -X POST \
 ```
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/aba92eb508b688f7e4353736fa5d2575e2a2c6f4#diff-b5e833372dd39ee133868d12218c692a73c4ac09998fd7ec61ed61adc8e9c940)
 
+## 6. Logging out
+首先在 `util/jwt.rs` 中添加验证 `token` 的方法 `validate_token`
 
+```rust
+use axum::http::StatusCode;
+use chrono::Duration;
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
+use serde::{Deserialize, Serialize};
 
+use super::app_error::AppError;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Claims {
+    exp: usize,
+    username: String,
+}
+
+pub fn create_token(secret: &str, username: String) -> Result<String, AppError> {
+    let now = chrono::Utc::now();
+    let expires_at = now + Duration::hours(1);
+    let exp = expires_at.timestamp() as usize;
+    let claims = Claims { exp, username };
+    let token_header = Header::default();
+    let key = EncodingKey::from_secret(secret.as_bytes());
+    encode(&token_header, &claims, &key).map_err(|err| {
+        eprintln!("Error creating token: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "There was an error creating the token",
+        )
+    })
+}
+
+pub fn validate_token(secret: &str, token: &str) -> Result<Claims, AppError> {
+    let key = DecodingKey::from_secret(secret.as_bytes());
+    let validation = Validation::new(Algorithm::HS256);
+    decode::<Claims>(token, &key, &validation)
+        .map_err(|err| match err.kind() {
+            jsonwebtoken::errors::ErrorKind::InvalidToken
+            | jsonwebtoken::errors::ErrorKind::InvalidSignature
+            | jsonwebtoken::errors::ErrorKind::ExpiredSignature => {
+                AppError::new(StatusCode::UNAUTHORIZED, "not authenticated!")
+            }
+            _ => {
+                eprintln!("Error validating token: {err:?}");
+                AppError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "There was an error validating the token",
+                )
+            }
+        })
+        .map(|claim| claim.claims)
+}
+```
+
+退出登录，需要在请求头中加 `token` 所以这里先添加中间件，新建文件夹 `middleware` 并新建文件 `middleware/require_authentication.rs`
+
+```rust
+use axum::{
+    extract::State,
+    http::{HeaderMap, Request, StatusCode},
+    middleware::Next,
+    response::Response,
+};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+
+use crate::util::{app_error::AppError, jwt::validate_token};
+use entity::{prelude::*, users};
+
+pub async fn require_authentication<T>(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    headers: HeaderMap,
+    mut request: Request<T>,
+    next: Next<T>,
+) -> Result<Response, AppError> {
+    let token = if let Some(token) = headers.get("x-token") {
+        token.to_str().map_err(|err| {
+            eprintln!("Error extracting token from headers: {err:?}");
+            AppError::new(StatusCode::BAD_REQUEST, err.to_string())
+        })?
+    } else {
+        return Err(AppError::new(
+            StatusCode::UNAUTHORIZED,
+            "Missing authentication token",
+        ));
+    };
+
+    validate_token(&secret, token)?;
+
+    let user = Users::find()
+        .filter(users::Column::Token.eq(Some(token.to_owned())))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting user by token: {err:?}");
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "There was a problem getting your account",
+            )
+        })?;
+
+    if let Some(user) = user {
+        request.extensions_mut().insert(user);
+    } else {
+        return Err(AppError::new(
+            StatusCode::UNAUTHORIZED,
+            "You are not authorized for this",
+        ));
+    };
+    Ok(next.run(request).await)
+}
+```
+
+新增 `api/users/logout.rs` 文件，并将其添加到 `router.rs`
+
+```rust
+use axum::{extract::State, http::StatusCode, Extension};
+use entity::users;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, IntoActiveModel, Set};
+
+use crate::util::app_error::AppError;
+
+pub async fn logout(
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<users::Model>,
+) -> Result<StatusCode, AppError> {
+    let mut user = user.into_active_model();
+    user.token = Set(None);
+    user.save(&db).await.map_err(|err| {
+        eprintln!("Error removing token: {err:?}");
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+    })?;
+    Ok(StatusCode::OK)
+}
+```
+
+<details>
+
+```rust
+use axum::{
+    middleware,
+    routing::{get, post},
+    Router,
+};
+
+use crate::{
+    api::{
+        hello::hello,
+        users::{create_user::create_user, login::login, logout::logout},
+    },
+    app_state::AppState,
+    middleware::require_authentication::require_authentication,
+};
+
+pub async fn create_router(app_state: AppState) -> Router {
+    let user_routes_auth =
+        Router::new()
+            .route("/logout", post(logout))
+            .route_layer(middleware::from_fn_with_state(
+                app_state.clone(),
+                require_authentication,
+            ));
+    let user_routes = Router::new()
+        .route("/", post(create_user))
+        .route("/login", post(login))
+        .merge(user_routes_auth)
+        .with_state(app_state);
+
+    let task_routes = Router::new().route("/", get(|| async {}));
+
+    let api_routes = Router::new()
+        .nest("/users", user_routes)
+        .nest("/tasks", task_routes);
+
+    Router::new()
+        .route("/", get(hello))
+        .nest("/api/v1/", api_routes)
+}
+```
+</details>
+
+发送 `logout` 请求
+
+```shell
+curl -X POST \
+  'http://localhost:3000/api/v1/users/logout' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzYxMzY1ODEsInVzZXJuYW1lIjoiQ3VzdGVyOCJ9.fiXKdkAhi5tQZH7ZtKEJkdiWiru8rQzktw7wu_G25Ek' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer8",
+  "password": "1234"
+}'
+```
