@@ -6,6 +6,7 @@
   - [Database URL](#database-url)
   - [Creating user](#creating-user)
   - [Json Web Token](#json-web-token)
+  - [Hash password](#hash-password)
 
 ## 1.Introduce the project
 
@@ -683,3 +684,101 @@ curl -X POST \
   }
 }
 ```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/d58fe67504eb947b88d3a3958eeff8cf935b3798#diff-ee6af3e44180d400670d53d2b574ab6e4526b5a568a6d40c244b0db1b7f4f0bb)
+
+### Hash password
+
+首先给 `jwt` 的 `claims` 增加 `username` 
+
+```rust
+use axum::http::StatusCode;
+use chrono::Duration;
+use jsonwebtoken::{encode, EncodingKey, Header};
+use serde::{Deserialize, Serialize};
+
+use super::app_error::AppError;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Claims {
+    exp: usize,
+    username: String,
+}
+
+pub fn create_token(secret: &str, username: String) -> Result<String, AppError> {
+    let now = chrono::Utc::now();
+    let expires_at = now + Duration::hours(1);
+    let exp = expires_at.timestamp() as usize;
+    let claims = Claims { exp, username };
+    let token_header = Header::default();
+    let key = EncodingKey::from_secret(secret.as_bytes());
+    encode(&token_header, &claims, &key).map_err(|err| {
+        eprintln!("Error creating token: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "There was an error creating the token",
+        )
+    })
+}
+```
+
+然后增加 `password` 的 `bcrypt` 加密，新增文件 `util/hash.rs`
+
+```rust
+use axum::http::StatusCode;
+use bcrypt::hash;
+
+use crate::util::app_error::AppError;
+pub fn hash_password(password: &str) -> Result<String, AppError> {
+    hash(password.as_bytes(), bcrypt::DEFAULT_COST).map_err(|err| {
+        eprintln!("Error hashing password: {err:?}");
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error securing password")
+    })
+}
+```
+
+然后在 `api/create_user.rs` 中加密 `password`
+
+```rust
+use axum::{extract::State, http::StatusCode, Json};
+use entity::users;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
+use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
+
+use crate::util::{app_error::AppError, hash::hash_password, jwt::create_token};
+
+pub async fn create_user(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let mut new_user = users::ActiveModel {
+        ..Default::default()
+    };
+    new_user.username = Set(request_user.username.clone());
+    new_user.password = Set(hash_password(&request_user.password)?);
+    new_user.token = Set(Some(create_token(&secret, request_user.username)?));
+    let user = new_user
+        .save(&db)
+        .await
+        .map_err(|error| {
+            eprintln!("Error creating user: {:?}", error);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
+        })?
+        .try_into_model()
+        .map_err(|err| {
+            eprintln!("Error converting user back into model: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+        })?;
+
+    Ok(Json(ResponseDataUser {
+        data: ResponseUser {
+            id: user.id,
+            username: user.username,
+            token: user.token.unwrap_or_default(),
+        },
+    }))
+}
+```
+
+[代码变动]()

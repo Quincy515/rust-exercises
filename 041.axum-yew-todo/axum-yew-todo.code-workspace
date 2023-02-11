@@ -10,5 +10,17 @@
 		"path": "entity"
 	}
 ],
-  "settings": {}
+"settings": {
+	"sqltools.connections": [
+		{
+			"previewLimit": 50,
+			"server": "localhost",
+			"port": 5432,
+			"driver": "PostgreSQL",
+			"name": "postgres-todo",
+			"database": "user_task",
+			"username": "postgres"
+		}
+	]
+}
 }
