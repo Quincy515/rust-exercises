@@ -19,9 +19,19 @@ pub async fn create_user(
     let user = new_user
         .save(&db)
         .await
-        .map_err(|error| {
-            eprintln!("Error creating user: {:?}", error);
-            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, error.to_string())
+        .map_err(|err| {
+            let error_message = err.to_string();
+            if error_message
+                .contains("duplicate key value violates unique constraint \"users_username_key\"")
+            {
+                AppError::new(
+                    StatusCode::BAD_REQUEST,
+                    "Username already taken, try again with a different user name",
+                )
+            } else {
+                eprintln!("Error creating user: {:?}", &err);
+                AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
         })?
         .try_into_model()
         .map_err(|err| {

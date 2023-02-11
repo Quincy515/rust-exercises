@@ -7,6 +7,7 @@
   - [Creating user](#creating-user)
   - [Json Web Token](#json-web-token)
   - [Hash password](#hash-password)
+- [4. Handing Duplicate Usernames](#4-handing-duplicate-usernames)
 
 ## 1.Introduce the project
 
@@ -781,4 +782,86 @@ pub async fn create_user(
 }
 ```
 
-[代码变动]()
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/445460cbdef25cad2aa321dacbcccdcadee72d6e#diff-ee6af3e44180d400670d53d2b574ab6e4526b5a568a6d40c244b0db1b7f4f0bb)
+
+## 4. Handing Duplicate Usernames
+
+目前创建重复的用户名，服务器会返回 500 错误
+
+```shell
+curl -X POST \
+  'http://localhost:3000/api/v1/users' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "username": "Custer8",
+  "password": "1234"
+}'
+
+{
+  "error": "Query Error: error returned from database: duplicate key value violates unique constraint \"users_username_key\""
+}
+```
+
+可以捕获数据库返回的错误，也可以提前检查 `username` 是否存在
+
+```rust
+use axum::{extract::State, http::StatusCode, Json};
+use entity::users;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
+use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
+
+use crate::util::{app_error::AppError, hash::hash_password, jwt::create_token};
+
+pub async fn create_user(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let mut new_user = users::ActiveModel {
+        ..Default::default()
+    };
+    new_user.username = Set(request_user.username.clone());
+    new_user.password = Set(hash_password(&request_user.password)?);
+    new_user.token = Set(Some(create_token(&secret, request_user.username)?));
+    let user = new_user
+        .save(&db)
+        .await
+        .map_err(|err| {
+            let error_message = err.to_string();
+            if error_message
+                .contains("duplicate key value violates unique constraint \"users_username_key\"")
+            {
+                AppError::new(
+                    StatusCode::BAD_REQUEST,
+                    "Username already taken, try again with a different user name",
+                )
+            } else {
+                eprintln!("Error creating user: {:?}", &err);
+                AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+        })?
+        .try_into_model()
+        .map_err(|err| {
+            eprintln!("Error converting user back into model: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+        })?;
+
+    Ok(Json(ResponseDataUser {
+        data: ResponseUser {
+            id: user.id,
+            username: user.username,
+            token: user.token.unwrap_or_default(),
+        },
+    }))
+}
+```
+
+这样发送重复的 `username` 注册新用户，就会返回自定义的 Json 数据
+
+```rust
+{
+  "error": "Username already taken, try again with a different user name"
+}
+```
