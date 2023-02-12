@@ -9,7 +9,10 @@
   - [Hash password](#hash-password)
 - [4. Handing Duplicate Usernames](#4-handing-duplicate-usernames)
 - [5. Singing in](#5-singing-in)
-- [6. Logging out](#6-logging-out)
+- [6. Middleware \& Logging out](#6-middleware--logging-out)
+- [7. Creating Tasks](#7-creating-tasks)
+  - [在 `handler` 中验证 `request`](#在-handler-中验证-request)
+  - [在 `request` 提取器中验证，进入 `handler` 函数之前](#在-request-提取器中验证进入-handler-函数之前)
 
 ## 1.Introduce the project
 
@@ -50,6 +53,7 @@ cargo add dotenvy_macro
 cargo add jsonwebtoken
 cargo add sea-orm -F sqlx-postgres -F runtime-tokio-rustls
 cargo add serde -F derive
+cargo add validator -F derive
 cargo add serde_with
 cargo add tokio -F macros -F rt-multi-thread
 cargo add tower-http -F cors
@@ -1026,7 +1030,7 @@ curl -X POST \
 ```
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/aba92eb508b688f7e4353736fa5d2575e2a2c6f4#diff-b5e833372dd39ee133868d12218c692a73c4ac09998fd7ec61ed61adc8e9c940)
 
-## 6. Logging out
+## 6. Middleware & Logging out
 首先在 `util/jwt.rs` 中添加验证 `token` 的方法 `validate_token`
 
 ```rust
@@ -1222,3 +1226,240 @@ curl -X POST \
   "password": "1234"
 }'
 ```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/86c34e260700dbd359e204528c0a1a4a262751c6#diff-4ac4689c9e9c17852be3d67d135a611413354404d7faf3e1e83799a39fe18525)
+
+## 7. Creating Tasks
+
+### 在 `handler` 中验证 `request`
+
+首先新增 `types/src/task.rs` 文件
+
+```rust
+use serde::{Deserialize, Serialize};
+use validator::Validate;
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct RequestTask {
+    #[validate(
+        required(message = "missing task title"),
+        length(min = 1, max = 6, message = "task title length should >1 and <7")
+    )]
+    pub title: Option<String>,
+    pub priority: Option<String>,
+    pub description: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ResponseTask {
+    pub id: i32,
+    pub title: String,
+    pub priority: Option<String>,
+    pub description: Option<String>,
+    pub completed_at: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ResponseDataTask {
+    pub data: ResponseTask,
+}
+```
+
+注意这里需要在 `types` 这个 `crate` 中添加 `validator` 第三方库
+
+```shell
+cargo add validator -F derive
+```
+
+然后新增 `server/src/api/tasks/create_task.rs` 文件夹和文件
+
+```rust
+use axum::{extract::State, http::StatusCode, Extension, Json};
+use entity::{tasks, users::Model as UserModel};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
+use types::task::{RequestTask, ResponseDataTask, ResponseTask};
+use validator::Validate;
+
+use crate::util::app_error::AppError;
+
+pub async fn create_task(
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+    Json(request_task): Json<RequestTask>,
+) -> Result<(StatusCode, Json<ResponseDataTask>), AppError> {
+    // 验证请求的数据
+    if let Err(err) = request_task.validate() {
+        let field_errors = err.field_errors();
+        for (_, error) in field_errors {
+            return Err(AppError::new(
+                StatusCode::BAD_REQUEST,
+                error
+                    .first()
+                    .unwrap()
+                    .clone()
+                    .message
+                    .unwrap() // .unwrap_or_else(|| "Title shouldn't correct!".into())
+                    .to_string(),
+            ));
+        }
+    }
+    // 新建待保存数据的对象
+    let new_task = tasks::ActiveModel {
+        priority: Set(request_task.priority),
+        title: Set(request_task.title.unwrap_or_default()),
+        description: Set(request_task.description),
+        user_id: Set(Some(user.id)),
+        ..Default::default()
+    };
+    // 保存数据到数据库
+    let task = new_task
+        .save(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error creating task: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error creating task")
+        })?
+        .try_into_model()
+        .map_err(|err| {
+            eprintln!("Error converting task after creating it: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error converting task")
+        })?;
+    // 返回 Json 数据
+    let response = ResponseDataTask {
+        data: ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            completed_at: task.completed_at.map(|time| time.to_string()),
+        },
+    };
+    Ok((StatusCode::CREATED, Json(response)))
+}
+```
+
+修改路由 `http://localhost:3000/api/v1/task` 新增 `create_task` 路由处理函数
+
+```rust
+use axum::{
+    middleware,
+    routing::{get, post},
+    Router,
+};
+
+use crate::{
+    api::{
+        hello::hello,
+        tasks::create_task::create_task,
+        users::{create_user::create_user, login::login, logout::logout},
+    },
+    app_state::AppState,
+    middleware::require_authentication::require_authentication,
+};
+
+pub async fn create_router(app_state: AppState) -> Router {
+    let user_routes_auth =
+        Router::new()
+            .route("/logout", post(logout))
+            .route_layer(middleware::from_fn_with_state(
+                app_state.clone(),
+                require_authentication,
+            ));
+    let user_routes = Router::new()
+        .route("/", post(create_user))
+        .route("/login", post(login))
+        .merge(user_routes_auth);
+
+    let task_routes =
+        Router::new()
+            .route("/", post(create_task))
+            .route_layer(middleware::from_fn_with_state(
+                app_state.clone(),
+                require_authentication,
+            ));
+
+    let api_routes = Router::new()
+        .nest("/users", user_routes)
+        .nest("/tasks", task_routes);
+
+    Router::new()
+        .route("/", get(hello))
+        .nest("/api/v1/", api_routes)
+        .with_state(app_state)
+}
+```
+
+<details><summary>此时发送 curl</summary>
+
+1. 未传入 title
+```shell
+> curl -X POST \
+  'http://localhost:3000/api/v1/tasks' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzYyMTUxNzUsInVzZXJuYW1lIjoiQ3VzdGVyOCJ9.CabRnDVs6KXX701eAYjrlPqT7fYcokTzgniJOozMilo' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "priority": "A"
+}'
+```
+返回 json 数据
+
+```json
+{
+  "error": "missing task title"
+}
+```
+
+2. 传入的 title 长度错误
+
+```shell
+curl -X POST \
+  'http://localhost:3000/api/v1/tasks' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzYyMTUxNzUsInVzZXJuYW1lIjoiQ3VzdGVyOCJ9.CabRnDVs6KXX701eAYjrlPqT7fYcokTzgniJOozMilo' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "title": "",
+  "priority": "A"
+}'
+```
+
+返回的 json
+```json
+{
+  "error": "task title length should >1 and <7"
+}
+```
+
+3. 传入正确的请求
+
+```shell
+curl -X POST \
+  'http://localhost:3000/api/v1/tasks' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NzYyMTUxNzUsInVzZXJuYW1lIjoiQ3VzdGVyOCJ9.CabRnDVs6KXX701eAYjrlPqT7fYcokTzgniJOozMilo' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "title": "1",
+  "priority": "A"
+}'
+```
+
+返回的 json
+
+```json
+{
+  "data": {
+    "id": 16,
+    "title": "1",
+    "priority": "A",
+    "description": null,
+    "completed_at": null
+  }
+}
+```
+</details>
+### 在 `request` 提取器中验证，进入 `handler` 函数之前

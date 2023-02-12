@@ -7,6 +7,7 @@ use axum::{
 use crate::{
     api::{
         hello::hello,
+        tasks::create_task::create_task,
         users::{create_user::create_user, login::login, logout::logout},
     },
     app_state::AppState,
@@ -24,10 +25,15 @@ pub async fn create_router(app_state: AppState) -> Router {
     let user_routes = Router::new()
         .route("/", post(create_user))
         .route("/login", post(login))
-        .merge(user_routes_auth)
-        .with_state(app_state);
+        .merge(user_routes_auth);
 
-    let task_routes = Router::new().route("/", get(|| async {}));
+    let task_routes =
+        Router::new()
+            .route("/", post(create_task))
+            .route_layer(middleware::from_fn_with_state(
+                app_state.clone(),
+                require_authentication,
+            ));
 
     let api_routes = Router::new()
         .nest("/users", user_routes)
@@ -36,4 +42,5 @@ pub async fn create_router(app_state: AppState) -> Router {
     Router::new()
         .route("/", get(hello))
         .nest("/api/v1/", api_routes)
+        .with_state(app_state)
 }
