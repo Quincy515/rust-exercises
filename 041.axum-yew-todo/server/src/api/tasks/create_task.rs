@@ -1,16 +1,19 @@
 use axum::{extract::State, http::StatusCode, Extension, Json};
 use entity::{tasks, users::Model as UserModel};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
-use types::task::{RequestTask, ResponseDataTask, ResponseTask};
-use validator::Validate;
+use types::task::{ResponseDataTask, ResponseTask};
 
 use crate::util::app_error::AppError;
+
+use super::create_task_extractor::ValidateCreateTask;
 
 pub async fn create_task(
     State(db): State<DatabaseConnection>,
     Extension(user): Extension<UserModel>,
-    Json(request_task): Json<RequestTask>,
+    // Json(request_task): Json<RequestTask>,
+    task: ValidateCreateTask,
 ) -> Result<(StatusCode, Json<ResponseDataTask>), AppError> {
+    /*
     if let Err(err) = request_task.validate() {
         let field_errors = err.field_errors();
         for (_, error) in field_errors {
@@ -30,6 +33,14 @@ pub async fn create_task(
         priority: Set(request_task.priority),
         title: Set(request_task.title.unwrap_or_default()),
         description: Set(request_task.description),
+        user_id: Set(Some(user.id)),
+        ..Default::default()
+    };
+    */
+    let new_task = tasks::ActiveModel {
+        priority: Set(task.priority),
+        title: Set(task.title.unwrap_or_default()),
+        description: Set(task.description),
         user_id: Set(Some(user.id)),
         ..Default::default()
     };
