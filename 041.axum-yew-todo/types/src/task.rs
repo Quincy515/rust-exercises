@@ -1,3 +1,4 @@
+use sea_orm::FromQueryResult;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -12,7 +13,7 @@ pub struct RequestTask {
     pub description: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, FromQueryResult)]
 pub struct ResponseTask {
     pub id: i32,
     pub title: String,
@@ -24,4 +25,9 @@ pub struct ResponseTask {
 #[derive(Serialize)]
 pub struct ResponseDataTask {
     pub data: ResponseTask,
+}
+
+#[derive(Serialize)]
+pub struct ResponseDataTasks {
+    pub data: Vec<ResponseTask>,
 }

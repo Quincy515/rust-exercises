@@ -13,6 +13,7 @@
 - [7. Creating Tasks](#7-creating-tasks)
   - [在 `handler` 中验证 `request`](#在-handler-中验证-request)
   - [在 `request` 提取器中验证，进入 `handler` 函数之前](#在-request-提取器中验证进入-handler-函数之前)
+- [8. Getting All Tasks](#8-getting-all-tasks)
 
 ## 1.Introduce the project
 
@@ -1603,3 +1604,153 @@ pub async fn create_task(
     Ok((StatusCode::CREATED, Json(response)))
 } 
 ```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/460b7c4090e5617ebf554fcf7b1addbeb10859a4#diff-529f4564fd8fa8f2495c6df266d8e913c026c20acbbf38be70fb241b4141332f)
+
+## 8. Getting All Tasks
+
+> 注意
+> 这里应该只能获取自己的任务
+> 退出登录后不能获取任务
+> 不能获取别人的任务
+> 不能获取已经删除的任务
+
+新建文件 `server/src/api/tasks/get_all_tasks.rs`
+
+```rust
+use axum::http::StatusCode;
+use axum::{extract::State, Extension, Json};
+use entity::users::Model as UserModel;
+use entity::{prelude::*, tasks};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use types::task::{ResponseDataTasks, ResponseTask};
+
+use crate::util::app_error::AppError;
+
+pub async fn get_all_tasks(
+    Extension(user): Extension<UserModel>,
+    State(db): State<DatabaseConnection>,
+) -> Result<Json<ResponseDataTasks>, AppError> {
+    let tasks = Tasks::find()
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .filter(tasks::Column::DeletedAt.is_null())
+        .all(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting all tasks: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error getting all tasks")
+        })?
+        .into_iter()
+        .map(|task| ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            completed_at: task.completed_at.map(|time| time.to_string()),
+        })
+        .collect::<Vec<ResponseTask>>();
+
+    Ok(Json(ResponseDataTasks { data: tasks }))
+}
+```
+
+> 注意这里 **通过将函数应用于包含的值，将 `Option<T>` 映射到 `Option<U>`。**
+
+```rust
+if let Some(time) = task.completed_at { 
+    Some(time.to_string()) 
+} else { 
+    None 
+}
+```
+
+使用 `map` 将 `Option<T>` 映射到 `Option<U>`
+
+```rust
+task.completed_at.map(|time| time.to_string())
+```
+
+> 注意这里使用 `map` 将 `Vec<Model>` 转换为 `Vec<ResponseTask>`
+
+```rust
+    .into_iter()
+        .map(|task| ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            completed_at: task.completed_at.map(|time| time.to_string()),
+        })
+        .collect::<Vec<ResponseTask>>();
+```
+
+> 这里也可以使用 `sea-orm` 的 `.into_model::<ResponseTask>()` 方法将 `Vec<Model>` 转换为 `Vec<ResponseTask>`，只需要修改对应的 `ResponseTask` 
+
+```rust
+use sea_orm::FromQueryResult;
+use serde::{Deserialize, Serialize};
+use validator::Validate;
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct RequestTask {
+    #[validate(
+        required(message = "missing task title"),
+        length(min = 1, max = 6, message = "task title length should >1 and <7")
+    )]
+    pub title: Option<String>,
+    pub priority: Option<String>,
+    pub description: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, FromQueryResult)]
+pub struct ResponseTask {
+    pub id: i32,
+    pub title: String,
+    pub priority: Option<String>,
+    pub description: Option<String>,
+    pub completed_at: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ResponseDataTask {
+    pub data: ResponseTask,
+}
+
+#[derive(Serialize)]
+pub struct ResponseDataTasks {
+    pub data: Vec<ResponseTask>,
+}
+```
+
+在 `get_all_tasks` 中使用 
+
+```rust
+use axum::http::StatusCode;
+use axum::{extract::State, Extension, Json};
+use entity::users::Model as UserModel;
+use entity::{prelude::*, tasks};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use types::task::{ResponseDataTasks, ResponseTask};
+
+use crate::util::app_error::AppError;
+
+pub async fn get_all_tasks(
+    Extension(user): Extension<UserModel>,
+    State(db): State<DatabaseConnection>,
+) -> Result<Json<ResponseDataTasks>, AppError> {
+    let tasks = Tasks::find()
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .filter(tasks::Column::DeletedAt.is_null())
+        .into_model::<ResponseTask>()
+        .all(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting all tasks: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error getting all tasks")
+        })?;
+
+    Ok(Json(ResponseDataTasks { data: tasks }))
+}
+```
+
+[代码变动]()
