@@ -42,10 +42,25 @@ pub async fn create_user(
             AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
         })?;
 
+    create_default_tasks_for_user(&db, &user).await?;
+
+    Ok(Json(ResponseDataUser {
+        data: ResponseUser {
+            id: user.id,
+            username: user.username,
+            token: user.token.unwrap_or_default(),
+        },
+    }))
+}
+
+async fn create_default_tasks_for_user(
+    db: &DatabaseConnection,
+    user: &users::Model,
+) -> Result<(), AppError> {
     let default_tasks = Tasks::find()
         .filter(tasks::Column::IsDefault.eq(Some(true)))
         .filter(tasks::Column::DeletedAt.is_null())
-        .all(&db)
+        .all(db)
         .await
         .map_err(|err| {
             eprintln!("Error getting default tasks: {:?}", err);
@@ -54,7 +69,7 @@ pub async fn create_user(
                 "Error applying default tasks to new account",
             )
         })?;
-    for default_task in default_tasks {
+    Ok(for default_task in default_tasks {
         let task = tasks::ActiveModel {
             priority: Set(default_task.priority),
             title: Set(default_task.title),
@@ -65,19 +80,12 @@ pub async fn create_user(
             ..Default::default()
         };
 
-        task.save(&db).await.map_err(|err| {
+        task.save(db).await.map_err(|err| {
             eprintln!("Error creating task from default: {:?}", err);
             AppError::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error saving new default task for user",
             )
         })?;
-    }
-    Ok(Json(ResponseDataUser {
-        data: ResponseUser {
-            id: user.id,
-            username: user.username,
-            token: user.token.unwrap_or_default(),
-        },
-    }))
+    })
 }
