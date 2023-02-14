@@ -16,6 +16,7 @@
 - [8. Getting All Tasks](#8-getting-all-tasks)
   - [创建新用户时添加默认task](#创建新用户时添加默认task)
   - [重构代码](#重构代码)
+- [9. Get One Task](#9-get-one-task)
 
 ## 1.Introduce the project
 
@@ -1941,6 +1942,63 @@ async fn create_default_tasks_for_user(
             )
         })?;
     })
+}
+```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/f1caf9057b95de308b13c5395ad54c1be0f385ea#diff-ee6af3e44180d400670d53d2b574ab6e4526b5a568a6d40c244b0db1b7f4f0bb)
+
+## 9. Get One Task
+> should be able to get my task
+> should not be able to get task when logged out
+> should not be able to get another users task
+
+新建文件 `server/src/api/tasks/get_one_task.rs`
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Extension, Json,
+};
+use entity::users::Model as UserModel;
+use entity::{prelude::*, tasks};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use types::task::{ResponseDataTask, ResponseTask};
+
+use crate::util::app_error::AppError;
+
+pub async fn get_one_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<Json<ResponseDataTask>, AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        // .into_model::<ResponseTask>()
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error when getting task: {err:?}");
+            AppError::new(
+                StatusCode::BAD_REQUEST,
+                "We got an error when attempting to load your task",
+            )
+        })?;
+
+    let response = if let Some(task) = task {
+        // task
+        ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            completed_at: task.completed_at.map(|time| time.to_string()),
+        }
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "not found"));
+    };
+
+    Ok(Json(ResponseDataTask { data: response }))
 }
 ```
 
