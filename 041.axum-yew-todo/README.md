@@ -2007,7 +2007,6 @@ pub async fn get_one_task(
 
 ## 10. Update Tasks
 
-> should be able to mark a task as not completed
 > should be able to update all fields in the task
 > should can_update_some_of_the_task_without_losing_data 可以在不丢失数据的情况下更新一些任务
 > should can uncomplete a task with an update 可以通过更新取消完成任务
@@ -2099,5 +2098,77 @@ curl -X GET \
   }
 }
 ```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/37a89c31b556b096833b2acf87beea57f37cdca9#diff-b7136d3e53a5279956cad1bc3652f43b2e12d7d0e3a83669358d0038b10a2a2b)
+
+> should be able to mark a task as not completed
+
+修改文件 `server/src/api/tasks/update_tasks.rs` 增加 `mark_uncompleted` 函数
+
+```rust
+
+pub async fn mark_uncompleted(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task to update: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
+        })?;
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    task.completed_at = Set(None);
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error marking task as uncompleted: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while updating uncompleted at",
+        )
+    })?;
+    Ok(())
+}
+```
+
+测试 curl
+```shell
+curl -X PUT \
+  'http://localhost:3000/api/v1/tasks/21/uncompleted' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2Nzc5MTgyMTgsInVzZXJuYW1lIjoiQ3VzdGVyMTEifQ.-yjCTEbb-3Rqd5I4jgP_6T3-h_oHMm1yyQEbkZyKM1U'
+```
+
+查看该任务
+```shell
+curl -X GET \
+  'http://localhost:3000/api/v1/tasks/21' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2Nzc5MTgyMTgsInVzZXJuYW1lIjoiQ3VzdGVyMTEifQ.-yjCTEbb-3Rqd5I4jgP_6T3-h_oHMm1yyQEbkZyKM1U'
+```
+
+返回结果为 
+
+```json
+{
+  "data": {
+    "id": 21,
+    "title": "See my details for by clicking me",
+    "priority": "B",
+    "description": "My description can be changed",
+    "completed_at": null
+  }
+}
+```
+
 
 [代码变动]()

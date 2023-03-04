@@ -43,3 +43,33 @@ pub async fn mark_completed(
     })?;
     Ok(())
 }
+
+pub async fn mark_uncompleted(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task to update: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
+        })?;
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    task.completed_at = Set(None);
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error marking task as uncompleted: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while updating uncompleted at",
+        )
+    })?;
+    Ok(())
+}
