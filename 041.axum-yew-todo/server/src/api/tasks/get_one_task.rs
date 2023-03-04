@@ -17,6 +17,7 @@ pub async fn get_one_task(
 ) -> Result<Json<ResponseDataTask>, AppError> {
     let task = Tasks::find_by_id(task_id)
         .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .filter(tasks::Column::DeletedAt.is_null())
         // .into_model::<ResponseTask>()
         .one(&db)
         .await

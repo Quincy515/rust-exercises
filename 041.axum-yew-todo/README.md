@@ -21,6 +21,7 @@
   - [should be able to mark a task as completed](#should-be-able-to-mark-a-task-as-completed)
   - [should be able to mark a task as not completed](#should-be-able-to-mark-a-task-as-not-completed)
   - [should be able to update all fields in the task](#should-be-able-to-update-all-fields-in-the-task)
+- [11. Soft Deleting Tasks](#11-soft-deleting-tasks)
 
 ## 1.Introduce the project
 
@@ -1978,6 +1979,7 @@ pub async fn get_one_task(
 ) -> Result<Json<ResponseDataTask>, AppError> {
     let task = Tasks::find_by_id(task_id)
         .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .filter(tasks::Column::DeletedAt.is_null())
         // .into_model::<ResponseTask>()
         .one(&db)
         .await
@@ -2365,4 +2367,151 @@ curl -X GET \
 }
 ```
 
-[代码更新]()
+更新的 `router.rs` 代码
+
+<details>
+
+```rust
+use axum::{
+    middleware,
+    routing::{get, patch, post, put},
+    Router,
+};
+
+use crate::{
+    api::{
+        hello::hello,
+        tasks::{
+            create_task::create_task,
+            get_all_tasks::get_all_tasks,
+            get_one_task::get_one_task,
+            update_tasks::{mark_completed, mark_uncompleted, update_task},
+        },
+        users::{create_user::create_user, login::login, logout::logout},
+    },
+    app_state::AppState,
+    middleware::require_authentication::require_authentication,
+};
+
+pub async fn create_router(app_state: AppState) -> Router {
+    let user_routes_auth =
+        Router::new()
+            .route("/logout", post(logout))
+            .route_layer(middleware::from_fn_with_state(
+                app_state.clone(),
+                require_authentication,
+            ));
+    let user_routes = Router::new()
+        .route("/", post(create_user))
+        .route("/login", post(login))
+        .merge(user_routes_auth);
+
+    let task_routes = Router::new()
+        .route("/", post(create_task))
+        .route("/", get(get_all_tasks))
+        .route("/:task_id", get(get_one_task))
+        .route("/:task_id/completed", put(mark_completed))
+        .route("/:task_id/uncompleted", put(mark_uncompleted))
+        .route("/:task_id", patch(update_task))
+        .route_layer(middleware::from_fn_with_state(
+            app_state.clone(),
+            require_authentication,
+        ));
+
+    let api_routes = Router::new()
+        .nest("/users", user_routes)
+        .nest("/tasks", task_routes);
+
+    Router::new()
+        .route("/", get(hello))
+        .nest("/api/v1/", api_routes)
+        .with_state(app_state)
+}
+```
+</details>
+
+[代码更新](https://github.com/CusterFun/rust-exercises/commit/5300c691c774affa0f548dc2d48816ba8dc8de41#diff-b7136d3e53a5279956cad1bc3652f43b2e12d7d0e3a83669358d0038b10a2a2b)
+
+## 11. Soft Deleting Tasks
+
+新建文件 `src/api/tasks/delete_task.rs`
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Extension,
+};
+use entity::{prelude::*, tasks, users::Model as UserModel};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    Set,
+};
+
+use crate::util::app_error::AppError;
+
+pub async fn soft_delete_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error deleteing task: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error deleting the task")
+        })?;
+
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    let now = chrono::Utc::now();
+
+    task.deleted_at = Set(Some(now.into()));
+
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error deleting task: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while deleting task",
+        )
+    })?;
+
+    Ok(())
+}
+```
+
+使用 curl 测试
+
+```shell
+curl -X DELETE \
+  'http://localhost:3000/api/v1/tasks/21' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2Nzc5MjIwNTIsInVzZXJuYW1lIjoiQ3VzdGVyMTEifQ.HKMhEbxvL4yDmICUiEH7YpkSmrqn1ODgjUhC8KHNt-o'
+```
+
+查看是否删除该任务
+
+```shell
+curl -X GET \
+  'http://localhost:3000/api/v1/tasks/21' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2Nzc5MjIwNTIsInVzZXJuYW1lIjoiQ3VzdGVyMTEifQ.HKMhEbxvL4yDmICUiEH7YpkSmrqn1ODgjUhC8KHNt-o'
+```
+
+返回
+
+```json
+{
+  "error": "not found"
+}
+```
+
+[代码变动]()
