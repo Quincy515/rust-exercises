@@ -1,6 +1,6 @@
 use axum::{
     middleware,
-    routing::{get, post, put},
+    routing::{get, patch, post, put},
     Router,
 };
 
@@ -11,7 +11,7 @@ use crate::{
             create_task::create_task,
             get_all_tasks::get_all_tasks,
             get_one_task::get_one_task,
-            update_tasks::{mark_completed, mark_uncompleted},
+            update_tasks::{mark_completed, mark_uncompleted, update_task},
         },
         users::{create_user::create_user, login::login, logout::logout},
     },
@@ -38,6 +38,7 @@ pub async fn create_router(app_state: AppState) -> Router {
         .route("/:task_id", get(get_one_task))
         .route("/:task_id/completed", put(mark_completed))
         .route("/:task_id/uncompleted", put(mark_uncompleted))
+        .route("/:task_id", patch(update_task))
         .route_layer(middleware::from_fn_with_state(
             app_state.clone(),
             require_authentication,

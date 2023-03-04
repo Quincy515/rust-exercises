@@ -18,6 +18,9 @@
   - [重构代码](#重构代码)
 - [9. Get One Task](#9-get-one-task)
 - [10. Update Tasks](#10-update-tasks)
+  - [should be able to mark a task as completed](#should-be-able-to-mark-a-task-as-completed)
+  - [should be able to mark a task as not completed](#should-be-able-to-mark-a-task-as-not-completed)
+  - [should be able to update all fields in the task](#should-be-able-to-update-all-fields-in-the-task)
 
 ## 1.Introduce the project
 
@@ -2007,6 +2010,8 @@ pub async fn get_one_task(
 
 ## 10. Update Tasks
 
+> should be able to mark a task as completed
+> should be able to mark a task as not completed
 > should be able to update all fields in the task
 > should can_update_some_of_the_task_without_losing_data 可以在不丢失数据的情况下更新一些任务
 > should can uncomplete a task with an update 可以通过更新取消完成任务
@@ -2014,7 +2019,7 @@ pub async fn get_one_task(
 > should not be able to mark other users tasks as not completed
 > should not be able to update other users tasks
 
-> should be able to mark a task as completed
+### should be able to mark a task as completed
 新建文件 `server/src/api/tasks/update_tasks.rs`
 
 ```rust
@@ -2101,7 +2106,7 @@ curl -X GET \
 
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/37a89c31b556b096833b2acf87beea57f37cdca9#diff-b7136d3e53a5279956cad1bc3652f43b2e12d7d0e3a83669358d0038b10a2a2b)
 
-> should be able to mark a task as not completed
+### should be able to mark a task as not completed
 
 修改文件 `server/src/api/tasks/update_tasks.rs` 增加 `mark_uncompleted` 函数
 
@@ -2170,5 +2175,194 @@ curl -X GET \
 }
 ```
 
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/bd6d58288527d1ad69a8e8536d9ffdf0c2edb851#diff-b7136d3e53a5279956cad1bc3652f43b2e12d7d0e3a83669358d0038b10a2a2b)
 
-[代码变动]()
+### should be able to update all fields in the task
+
+在 `types` 中 新增 `chrono` 第三方库
+
+```shell
+cargo add chrono -F serde
+cargo add serde_with
+```
+
+如果为空就不更新该字段，就需要使用 [serde_with](https://crates.io/crates/serde_with) 的 [double option](https://docs.rs/serde_with/latest/serde_with/rust/double_option/index.html)
+
+> 区分更新字段时：忽略更新该字段、更新该字段为NULL、更新该字段为新值
+
+- None: Represents a missing value.
+- Some(None): Represents a null value.
+- Some(Some(value)): Represents an existing value
+
+```rust
+#[derive(Deserialize, Serialize)]
+struct Doc {
+    #[serde(
+        default,                                    // <- important for deserialization
+        skip_serializing_if = "Option::is_none",    // <- important for serialization
+        with = "::serde_with::rust::double_option",
+    )]
+    a: Option<Option<u8>>,
+}
+// Missing Value
+let s = r#"{}"#;
+assert_eq!(Doc { a: None }, serde_json::from_str(s).unwrap());
+assert_eq!(s, serde_json::to_string(&Doc { a: None }).unwrap());
+
+// Unset Value
+let s = r#"{"a":null}"#;
+assert_eq!(Doc { a: Some(None) }, serde_json::from_str(s).unwrap());
+assert_eq!(s, serde_json::to_string(&Doc { a: Some(None) }).unwrap());
+
+// Existing Value
+let s = r#"{"a":5}"#;
+assert_eq!(Doc { a: Some(Some(5)) }, serde_json::from_str(s).unwrap());
+assert_eq!(s, serde_json::to_string(&Doc { a: Some(Some(5)) }).unwrap());
+```
+
+接着修改请求的数据结构 `types/src/task.rs`
+
+<details>
+
+```rust
+use chrono::{DateTime, FixedOffset};
+use sea_orm::FromQueryResult;
+use serde::{Deserialize, Serialize};
+use validator::Validate;
+
+#[derive(Serialize, Deserialize, Validate)]
+pub struct RequestTask {
+    #[validate(
+        required(message = "missing task title"),
+        length(min = 1, max = 6, message = "task title length should >1 and <7")
+    )]
+    pub title: Option<String>,
+    #[serde(
+        default,                                    // <- important for deserialization
+        skip_serializing_if = "Option::is_none",    // <- important for serialization
+        with = "::serde_with::rust::double_option",
+    )]
+    pub priority: Option<Option<String>>,
+    #[serde(
+        default,                                    // <- important for deserialization
+        skip_serializing_if = "Option::is_none",    // <- important for serialization
+        with = "::serde_with::rust::double_option",
+    )]
+    pub description: Option<Option<String>>,
+    #[serde(
+        default,                                    // <- important for deserialization
+        skip_serializing_if = "Option::is_none",    // <- important for serialization
+        with = "::serde_with::rust::double_option",
+    )]
+    pub completed_at: Option<Option<DateTime<FixedOffset>>>,
+}
+
+#[derive(Serialize, Deserialize, FromQueryResult)]
+pub struct ResponseTask {
+    pub id: i32,
+    pub title: String,
+    pub priority: Option<String>,
+    pub description: Option<String>,
+    pub completed_at: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ResponseDataTask {
+    pub data: ResponseTask,
+}
+
+#[derive(Serialize)]
+pub struct ResponseDataTasks {
+    pub data: Vec<ResponseTask>,
+}
+```
+
+</details>
+修改文件 `server/src/api/tasks/update_tasks.rs` 增加 `update_task` 函数
+
+```rust
+
+pub async fn update_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+    Json(request_task): Json<RequestTask>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task to update: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
+        })?;
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    if let Some(priority) = request_task.priority {
+        task.priority = Set(priority);
+    }
+    if let Some(description) = request_task.description {
+        task.description = Set(description);
+    }
+    if let Some(title) = request_task.title {
+        task.title = Set(title);
+    }
+    if let Some(completed_at) = request_task.completed_at {
+        task.completed_at = Set(completed_at);
+    }
+
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error marking task as uncompleted: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while updating uncompleted at",
+        )
+    })?;
+    Ok(())
+}
+```
+
+进行 curl 测试，缺省的字段为不更新，字段设置为null的更新为null，设置为新值的更新为新值
+
+```shell
+curl -X PATCH \
+  'http://localhost:3000/api/v1/tasks/21' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2Nzc5MjIwNTIsInVzZXJuYW1lIjoiQ3VzdGVyMTEifQ.HKMhEbxvL4yDmICUiEH7YpkSmrqn1ODgjUhC8KHNt-o' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "title": "123",
+  "priority": "A",
+  "description": "desc",
+  "completed_at": null
+}'
+```
+
+查看更新之后的 JSON
+
+```shell
+curl -X GET \
+  'http://localhost:3000/api/v1/tasks/21' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2Nzc5MjIwNTIsInVzZXJuYW1lIjoiQ3VzdGVyMTEifQ.HKMhEbxvL4yDmICUiEH7YpkSmrqn1ODgjUhC8KHNt-o'
+```
+
+```json
+{
+  "data": {
+    "id": 21,
+    "title": "123",
+    "priority": "A",
+    "description": "desc",
+    "completed_at": null
+  }
+}
+```
+
+[代码更新]()
