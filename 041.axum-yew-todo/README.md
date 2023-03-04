@@ -17,6 +17,7 @@
   - [创建新用户时添加默认task](#创建新用户时添加默认task)
   - [重构代码](#重构代码)
 - [9. Get One Task](#9-get-one-task)
+- [10. Update Tasks](#10-update-tasks)
 
 ## 1.Introduce the project
 
@@ -1999,6 +2000,103 @@ pub async fn get_one_task(
     };
 
     Ok(Json(ResponseDataTask { data: response }))
+}
+```
+
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/07ab241688b0a808109f8bf64b924addf0a19935#diff-f37ba02f6174cc71746f0285aa5689cad496436d40f9cc4dfbb63f4f1481b508)
+
+## 10. Update Tasks
+
+> should be able to mark a task as not completed
+> should be able to update all fields in the task
+> should can_update_some_of_the_task_without_losing_data 可以在不丢失数据的情况下更新一些任务
+> should can uncomplete a task with an update 可以通过更新取消完成任务
+> should not be able to mark other users tasks as completed
+> should not be able to mark other users tasks as not completed
+> should not be able to update other users tasks
+
+> should be able to mark a task as completed
+新建文件 `server/src/api/tasks/update_tasks.rs`
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Extension,
+};
+use chrono::Utc;
+use entity::tasks::{self, Entity as Tasks};
+use entity::users::Model as UserModel;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    Set,
+};
+
+use crate::util::app_error::AppError;
+
+pub async fn mark_completed(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task to update: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
+        })?;
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    let now = Utc::now();
+    task.completed_at = Set(Some(now.into()));
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error marking task as completed: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while updating completed at",
+        )
+    })?;
+    Ok(())
+}
+```
+
+测试 curl 
+
+```shell
+curl -X PUT \
+  'http://localhost:3000/api/v1/tasks/21/completed' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2Nzc5MTgyMTgsInVzZXJuYW1lIjoiQ3VzdGVyMTEifQ.-yjCTEbb-3Rqd5I4jgP_6T3-h_oHMm1yyQEbkZyKM1U'
+```
+
+返回200，查看该任务是否已经标记为完成
+
+```shell
+curl -X GET \
+  'http://localhost:3000/api/v1/tasks/21' \
+  --header 'Accept: */*' \
+  --header 'User-Agent: Thunder Client (https://www.thunderclient.com)' \
+  --header 'x-token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2Nzc5MTgyMTgsInVzZXJuYW1lIjoiQ3VzdGVyMTEifQ.-yjCTEbb-3Rqd5I4jgP_6T3-h_oHMm1yyQEbkZyKM1U'
+```
+
+返回 JSON
+
+```json
+{
+  "data": {
+    "id": 21,
+    "title": "See my details for by clicking me",
+    "priority": "B",
+    "description": "My description can be changed",
+    "completed_at": "2023-03-04 07:24:26.907190 +00:00"
+  }
 }
 ```
 
