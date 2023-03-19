@@ -7,6 +7,7 @@ pub mod app_state;
 mod middleware;
 mod router;
 mod util;
+mod queries;
 
 pub async fn run(app_state: AppState) {
     let app = router::create_router(app_state).await;
