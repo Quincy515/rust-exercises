@@ -10,7 +10,7 @@ pub async fn get_all_tasks(
     Extension(user): Extension<UserModel>,
     State(db): State<DatabaseConnection>,
 ) -> Result<Json<ResponseDataTasks>, AppError> {
-    let tasks = task_queries::get_all_tasks(&db, user.id, true)
+    let tasks = task_queries::get_all_tasks(&db, user.id, false)
         .await?
         .into_iter()
         .map(|task| ResponseTask {

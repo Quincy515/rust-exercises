@@ -27,6 +27,10 @@
   - [简化 `delete_task.rs`](#简化-delete_taskrs)
   - [简化 `save_active_task`](#简化-save_active_task)
   - [简化 `get_all_task.rs`](#简化-get_all_taskrs)
+  - [简化 `get_one_task.rs`](#简化-get_one_taskrs)
+  - [简化 `.rs`](#简化-rs)
+  - [简化 `.rs`](#简化-rs-1)
+  - [简化 `.rs`](#简化-rs-2)
 
 ## 1.Introduce the project
 
@@ -2672,7 +2676,7 @@ pub async fn create_task(
     Ok((StatusCode::CREATED, Json(response)))
 }
 ```
-
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/63823997e2023f1a57f88e6d6878849d52f20813#diff-529f4564fd8fa8f2495c6df266d8e913c026c20acbbf38be70fb241b4141332f)
 ### 简化 `delete_task.rs`
 
 在 `src/queries/task_queries.rs` 中新增 `find_task_by_id` 函数
@@ -2898,7 +2902,7 @@ pub async fn soft_delete_task(
     Ok(())
 }
 ```
-
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/85bac0d418c068e96fcfc712525253d6239230bc#diff-7687c4192b778c8847619360ad1d0167537616c606c5073d428bed846d3fbd26)
 ### 简化 `get_all_task.rs`
 
 在 `src/queries/task_queries.rs` 中新增 `find_all_tasks` 函数
@@ -2997,5 +3001,131 @@ pub async fn get_all_tasks(
 }
 ```
 
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/59d1c8d8eb611b6f5204b20a2cbef628cf445637#diff-f2c270ad790a4347fd28c08f637dd17c5facd639b45b82c4e7680d0cefa1814d)
 
+### 简化 `get_one_task.rs`
 
+将原文件 `src/api/tasks/get_one_task.rs`
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Extension, Json,
+};
+use entity::users::Model as UserModel;
+use entity::{prelude::*, tasks};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use types::task::{ResponseDataTask, ResponseTask};
+
+use crate::util::app_error::AppError;
+
+pub async fn get_one_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<Json<ResponseDataTask>, AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .filter(tasks::Column::DeletedAt.is_null())
+        // .into_model::<ResponseTask>()
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error when getting task: {err:?}");
+            AppError::new(
+                StatusCode::BAD_REQUEST,
+                "We got an error when attempting to load your task",
+            )
+        })?;
+
+    let response = if let Some(task) = task {
+        // task
+        ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            completed_at: task.completed_at.map(|time| time.to_string()),
+        }
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "not found"));
+    };
+
+    Ok(Json(ResponseDataTask { data: response }))
+}
+```
+
+简化为 
+
+```rust
+use axum::{
+    extract::{Path, State},
+    Extension, Json,
+};
+use entity::users::Model as UserModel;
+
+use sea_orm::DatabaseConnection;
+use types::task::{ResponseDataTask, ResponseTask};
+
+use crate::{queries::task_queries::find_task_by_id, util::app_error::AppError};
+
+pub async fn get_one_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<Json<ResponseDataTask>, AppError> {
+    let task = find_task_by_id(&db, task_id, user.id).await?;
+
+    let response = ResponseTask {
+        id: task.id,
+        title: task.title,
+        priority: task.priority,
+        description: task.description,
+        completed_at: task.completed_at.map(|time| time.to_string()),
+    };
+
+    Ok(Json(ResponseDataTask { data: response }))
+}
+```
+
+[代码变动]()
+### 简化 `.rs`
+
+在 `src/queries/task_queries.rs` 中新增 `` 函数
+
+```rust
+
+```
+
+将原文件 `src/api/tasks/`
+
+简化为 
+
+```rust
+
+```
+
+### 简化 `.rs`
+
+在 `src/queries/task_queries.rs` 中新增 `` 函数
+
+```rust
+
+```
+
+将原文件 `src/api/tasks/`
+
+简化为 
+
+### 简化 `.rs`
+
+在 `src/queries/task_queries.rs` 中新增 `` 函数
+
+```rust
+
+```
+
+将原文件 `src/api/tasks/`
+
+简化为 

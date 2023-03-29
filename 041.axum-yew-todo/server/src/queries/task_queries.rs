@@ -59,10 +59,10 @@ pub async fn save_active_task(
 pub async fn get_all_tasks(
     db: &DatabaseConnection,
     user_id: i32,
-    delete: bool,
+    get_deleted: bool,
 ) -> Result<Vec<TasksModel>, AppError> {
     let mut query = Tasks::find().filter(tasks::Column::UserId.eq(Some(user_id)));
-    if delete {
+    if !get_deleted {
         query = query.filter(tasks::Column::DeletedAt.is_null());
     }
 
