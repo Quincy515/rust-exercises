@@ -32,8 +32,8 @@
   - [简化 `create_user.rs`](#简化-create_userrs)
   - [简化 `create_default_tasks_for_user`](#简化-create_default_tasks_for_user)
   - [简化 `login.rs`](#简化-loginrs)
+  - [简化 `logout.rs`](#简化-logoutrs)
   - [简化 \`\`](#简化-)
-  - [简化 \`\`](#简化--1)
 
 ## 1.Introduce the project
 
@@ -3677,8 +3677,54 @@ pub async fn login(
     Ok(Json(ResponseDataUser { data: response }))
 }
 ```
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/dc0f78fb6a0e5fb3d9f2d86029b3cb2e4c531a6d#diff-b5e833372dd39ee133868d12218c692a73c4ac09998fd7ec61ed61adc8e9c940)
+
+### 简化 `logout.rs`
+
+将原文件 `src/api/users/logout.rs`
+
+```rust
+use axum::{extract::State, http::StatusCode, Extension};
+use entity::users;
+use sea_orm::{ActiveModelTrait, DatabaseConnection, IntoActiveModel, Set};
+
+use crate::util::app_error::AppError;
+
+pub async fn logout(
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<users::Model>,
+) -> Result<StatusCode, AppError> {
+    let mut user = user.into_active_model();
+    user.token = Set(None);
+    user.save(&db).await.map_err(|err| {
+        eprintln!("Error removing token: {err:?}");
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+    })?;
+    Ok(StatusCode::OK)
+}
+```
+
+简化为
+
+```rust
+use axum::{extract::State, http::StatusCode, Extension};
+use entity::users;
+use sea_orm::{DatabaseConnection, IntoActiveModel, Set};
+
+use crate::{queries::user_queries::save_active_user, util::app_error::AppError};
+
+pub async fn logout(
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<users::Model>,
+) -> Result<StatusCode, AppError> {
+    let mut user = user.into_active_model();
+    user.token = Set(None);
+    save_active_user(&db, user).await?;
+    Ok(StatusCode::OK)
+}
+```
+
 [代码变动]()
-
 ### 简化 ``
 
 在 `src/queries/user_queries.rs` 中新增 `` 函数
@@ -3694,18 +3740,4 @@ pub async fn login(
 ```rust
 
 ```
-### 简化 ``
-
-在 `src/queries/user_queries.rs` 中新增 `` 函数
-
-将原文件 ``
-
-```rust
-
-```
-
-简化为
-
-```rust
-
-```
+[代码变动]()
