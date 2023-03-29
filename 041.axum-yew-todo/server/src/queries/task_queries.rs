@@ -1,6 +1,8 @@
 use axum::http::StatusCode;
-use entity::{tasks, tasks::Model as TasksModel, users::Model as UsersModel};
-use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
+use entity::{prelude::*, tasks, tasks::Model as TasksModel, users::Model as UsersModel};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set, TryIntoModel,
+};
 
 use crate::{api::tasks::create_task_extractor::ValidateCreateTask, util::app_error::AppError};
 
@@ -17,11 +19,40 @@ pub async fn create_task(
         ..Default::default()
     };
 
-    let task = new_task.save(db).await.map_err(|err| {
-        eprintln!("Error creating task: {:?}", err);
-        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error creating task")
-    })?;
+    save_active_task(&db, new_task).await
+}
 
+pub async fn find_task_by_id(
+    db: &DatabaseConnection,
+    id: i32,
+    user_id: i32,
+) -> Result<TasksModel, AppError> {
+    let task = Tasks::find_by_id(id)
+        .filter(tasks::Column::UserId.eq(Some(user_id)))
+        .one(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task by id: {err:?}");
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "There was an error getting your task",
+            )
+        })?;
+
+    task.ok_or_else(|| {
+        eprintln!("CCould not find task by id: {id:?}");
+        AppError::new(StatusCode::NOT_FOUND, "Task not found")
+    })
+}
+
+pub async fn save_active_task(
+    db: &DatabaseConnection,
+    task: tasks::ActiveModel,
+) -> Result<TasksModel, AppError> {
+    let task = task.save(db).await.map_err(|err| {
+        eprintln!("Error saving task: {err:?}");
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error saving task")
+    })?;
     convert_active_to_model(task)
 }
 
