@@ -23,6 +23,9 @@
   - [should be able to update all fields in the task](#should-be-able-to-update-all-fields-in-the-task)
 - [11. Soft Deleting Tasks](#11-soft-deleting-tasks)
 - [12. Refactoring Queries](#12-refactoring-queries)
+  - [简化 `create_task.rs`](#简化-create_taskrs)
+  - [简化 `delete_task.rs`](#简化-delete_taskrs)
+  - [简化 `save_active_task`](#简化-save_active_task)
 
 ## 1.Introduce the project
 
@@ -2518,7 +2521,7 @@ curl -X GET \
 [代码变动](https://github.com/CusterFun/rust-exercises/commit/af4e92b03d7fd1f9bdf6a33cb3fe80d6aa328dbc#diff-7687c4192b778c8847619360ad1d0167537616c606c5073d428bed846d3fbd26)
 
 ## 12. Refactoring Queries
-
+### 简化 `create_task.rs`
 新增 `server/src/queries/mod.rs` 文件夹和文件 `task_queries.rs` 和文件`user_queries.rs`, 并修改 `mod.rs` 文件
 
 ```rust
@@ -2668,6 +2671,235 @@ pub async fn create_task(
     Ok((StatusCode::CREATED, Json(response)))
 }
 ```
+
+### 简化 `delete_task.rs`
+
+在 `src/queries/task_queries.rs` 中新增 `find_task_by_id` 函数
+
+```rust
+pub async fn find_task_by_id(
+    db: &DatabaseConnection,
+    id: i32,
+    user_id: i32,
+) -> Result<TasksModel, AppError> {
+    let task = Tasks::find_by_id(id)
+        .filter(tasks::Column::UserId.eq(Some(user_id)))
+        .one(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task by id: {err:?}");
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "There was an error getting your task",
+            )
+        })?;
+
+    task.ok_or_else(|| {
+        eprintln!("CCould not find task by id: {id:?}");
+        AppError::new(StatusCode::NOT_FOUND, "Task not found")
+    })
+}
+```
+
+将原文件 `src/api/tasks/delete_task.rs` 
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Extension,
+};
+use entity::{prelude::*, tasks, users::Model as UserModel};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    Set,
+};
+
+use crate::util::app_error::AppError;
+
+pub async fn soft_delete_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error deleteing task: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error deleting the task")
+        })?;
+
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    let now = chrono::Utc::now();
+
+    task.deleted_at = Set(Some(now.into()));
+
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error deleting task: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while deleting task",
+        )
+    })?;
+
+    Ok(())
+}
+```
+
+简化为 
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Extension,
+};
+use entity::{prelude::*, users::Model as UserModel};
+use sea_orm::{
+    ActiveModelTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter, Set,
+};
+
+use crate::{queries::task_queries, util::app_error::AppError};
+
+pub async fn soft_delete_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let mut task = task_queries::find_task_by_id(&db, task_id, user.id)
+        .await?
+        .into_active_model();
+
+    let now = chrono::Utc::now();
+
+    task.deleted_at = Set(Some(now.into()));
+
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error deleting task: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while deleting task",
+        )
+    })?;
+
+    Ok(())
+}
+```
+
+### 简化 `save_active_task`
+
+在 `src/queries/task_queries.rs` 中新增 `save_active_task` 函数
+
+```rust
+use axum::http::StatusCode;
+use entity::{prelude::*, tasks, tasks::Model as TasksModel, users::Model as UsersModel};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set, TryIntoModel,
+};
+
+use crate::{api::tasks::create_task_extractor::ValidateCreateTask, util::app_error::AppError};
+
+pub async fn create_task(
+    task: ValidateCreateTask,
+    user: &UsersModel,
+    db: &DatabaseConnection,
+) -> Result<TasksModel, AppError> {
+    let new_task = tasks::ActiveModel {
+        priority: Set(task.priority),
+        title: Set(task.title.unwrap_or_default()),
+        description: Set(task.description),
+        user_id: Set(Some(user.id)),
+        ..Default::default()
+    };
+
+    save_active_task(&db, new_task).await
+}
+
+pub async fn find_task_by_id(
+    db: &DatabaseConnection,
+    id: i32,
+    user_id: i32,
+) -> Result<TasksModel, AppError> {
+    let task = Tasks::find_by_id(id)
+        .filter(tasks::Column::UserId.eq(Some(user_id)))
+        .one(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task by id: {err:?}");
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "There was an error getting your task",
+            )
+        })?;
+
+    task.ok_or_else(|| {
+        eprintln!("CCould not find task by id: {id:?}");
+        AppError::new(StatusCode::NOT_FOUND, "Task not found")
+    })
+}
+
+pub async fn save_active_task(
+    db: &DatabaseConnection,
+    task: tasks::ActiveModel,
+) -> Result<TasksModel, AppError> {
+    let task = task.save(db).await.map_err(|err| {
+        eprintln!("Error saving task: {err:?}");
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error saving task")
+    })?;
+    convert_active_to_model(task)
+}
+
+fn convert_active_to_model(active_task: tasks::ActiveModel) -> Result<TasksModel, AppError> {
+    active_task.try_into_model().map_err(|err| {
+        eprintln!("Error converting task active model to model: {err:?}");
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })
+}
+```
+
+继续简化 `src/api/tasks/delete_task.rs` 文件
+
+```rust
+use axum::{
+    extract::{Path, State},
+    Extension,
+};
+use entity::users::Model as UserModel;
+use sea_orm::{DatabaseConnection, IntoActiveModel, Set};
+
+use crate::{
+    queries::task_queries::{find_task_by_id, save_active_task},
+    util::app_error::AppError,
+};
+
+pub async fn soft_delete_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let mut task = find_task_by_id(&db, task_id, user.id)
+        .await?
+        .into_active_model();
+
+    let now = chrono::Utc::now();
+
+    task.deleted_at = Set(Some(now.into()));
+
+    save_active_task(&db, task).await?;
+
+    Ok(())
+}
+```
+
+
+
 
 
 
