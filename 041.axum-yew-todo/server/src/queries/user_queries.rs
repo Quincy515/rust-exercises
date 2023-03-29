@@ -1,6 +1,11 @@
 use axum::http::StatusCode;
-use entity::users::{self, Model as UsersModel};
-use sea_orm::{ActiveModelTrait, DatabaseConnection, TryIntoModel};
+use entity::{
+    prelude::*,
+    users::{self, Model as UsersModel},
+};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TryIntoModel,
+};
 
 use crate::util::app_error::AppError;
 
@@ -24,6 +29,21 @@ pub async fn save_active_user(
     })?;
 
     convert_active_to_model(user)
+}
+
+pub async fn find_by_username(
+    db: &DatabaseConnection,
+    username: String,
+) -> Result<UsersModel, AppError> {
+    Users::find()
+        .filter(users::Column::Username.eq(username))
+        .one(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting user by username: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error loggin in")
+        })?
+        .ok_or_else(|| AppError::new(StatusCode::BAD_REQUEST, "bad username or password"))
 }
 
 fn convert_active_to_model(active_user: users::ActiveModel) -> Result<UsersModel, AppError> {

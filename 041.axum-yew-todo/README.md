@@ -31,6 +31,9 @@
   - [简化 `update_tasks.rs`](#简化-update_tasksrs)
   - [简化 `create_user.rs`](#简化-create_userrs)
   - [简化 `create_default_tasks_for_user`](#简化-create_default_tasks_for_user)
+  - [简化 `login.rs`](#简化-loginrs)
+  - [简化 \`\`](#简化-)
+  - [简化 \`\`](#简化--1)
 
 ## 1.Introduce the project
 
@@ -3543,4 +3546,166 @@ async fn create_default_tasks_for_user(
 }
 ```
 
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/b845ffaf2c9493212c3ac9d07de75a0bf165ca85#diff-ee6af3e44180d400670d53d2b574ab6e4526b5a568a6d40c244b0db1b7f4f0bb)
+
+### 简化 `login.rs`
+
+在 `src/queries/user_queries.rs` 中新增 `find_by_username` 函数
+
+```rust
+pub async fn find_by_username(
+    db: &DatabaseConnection,
+    username: String,
+) -> Result<UsersModel, AppError> {
+    Users::find()
+        .filter(users::Column::Username.eq(username))
+        .one(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting user by username: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error loggin in")
+        })?
+        .ok_or_else(|| AppError::new(StatusCode::BAD_REQUEST, "bad username or password"))
+}
+```
+
+将原文件 `src/api/users/login.rs`
+
+```rust
+use axum::{extract::State, http::StatusCode, Json};
+use entity::{prelude::*, users};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    Set, TryIntoModel,
+};
+use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
+
+use crate::util::{app_error::AppError, hash::verify_password, jwt::create_token};
+
+pub async fn login(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let user = Users::find()
+        .filter(users::Column::Username.eq(request_user.username.as_str()))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting user for logging in: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error loggin in")
+        })?;
+
+    if let Some(user) = user {
+        if !verify_password(&request_user.password, &user.password)? {
+            return Err(AppError::new(
+                StatusCode::UNAUTHORIZED,
+                "bad username or password",
+            ));
+        }
+        let token = create_token(&secret, user.username.clone())?;
+        let mut user = user.into_active_model();
+        user.token = Set(Some(token));
+        let user = user
+            .save(&db)
+            .await
+            .map_err(|err| {
+                eprintln!("Error saving user token: {:?}", err);
+                AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error saving user token")
+            })?
+            .try_into_model()
+            .map_err(|err| {
+                eprintln!("Error converting model to active model: {:?}", err);
+                AppError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Error converting model to active model",
+                )
+            })?;
+        let response = ResponseUser {
+            id: user.id,
+            username: user.username,
+            token: user.token.unwrap_or_default(),
+        };
+
+        Ok(Json(ResponseDataUser { data: response }))
+    } else {
+        Err(AppError::new(
+            StatusCode::BAD_REQUEST,
+            "bad username or password",
+        ))
+    }
+}
+```
+
+简化为
+
+```rust
+use axum::{extract::State, http::StatusCode, Json};
+use sea_orm::{DatabaseConnection, IntoActiveModel, Set};
+
+use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
+
+use crate::{
+    queries::user_queries::{find_by_username, save_active_user},
+    util::{app_error::AppError, hash::verify_password, jwt::create_token},
+};
+
+pub async fn login(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let user = find_by_username(&db, request_user.username).await?;
+
+    if !verify_password(&request_user.password, &user.password)? {
+        return Err(AppError::new(
+            StatusCode::UNAUTHORIZED,
+            "bad username or password",
+        ));
+    }
+    let token = create_token(&secret, user.username.clone())?;
+    let mut user = user.into_active_model();
+    user.token = Set(Some(token));
+    let user = save_active_user(&db, user).await?;
+
+    let response = ResponseUser {
+        id: user.id,
+        username: user.username,
+        token: user.token.unwrap_or_default(),
+    };
+
+    Ok(Json(ResponseDataUser { data: response }))
+}
+```
 [代码变动]()
+
+### 简化 ``
+
+在 `src/queries/user_queries.rs` 中新增 `` 函数
+
+将原文件 ``
+
+```rust
+
+```
+
+简化为
+
+```rust
+
+```
+### 简化 ``
+
+在 `src/queries/user_queries.rs` 中新增 `` 函数
+
+将原文件 ``
+
+```rust
+
+```
+
+简化为
+
+```rust
+
+```
