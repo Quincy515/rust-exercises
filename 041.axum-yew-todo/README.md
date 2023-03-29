@@ -26,6 +26,7 @@
   - [简化 `create_task.rs`](#简化-create_taskrs)
   - [简化 `delete_task.rs`](#简化-delete_taskrs)
   - [简化 `save_active_task`](#简化-save_active_task)
+  - [简化 `get_all_task.rs`](#简化-get_all_taskrs)
 
 ## 1.Introduce the project
 
@@ -2898,10 +2899,103 @@ pub async fn soft_delete_task(
 }
 ```
 
+### 简化 `get_all_task.rs`
 
+在 `src/queries/task_queries.rs` 中新增 `find_all_tasks` 函数
 
+```rust
 
+pub async fn get_all_tasks(
+    db: &DatabaseConnection,
+    user_id: i32,
+    delete: bool,
+) -> Result<Vec<TasksModel>, AppError> {
+    let mut query = Tasks::find().filter(tasks::Column::UserId.eq(Some(user_id)));
+    if delete {
+        query = query.filter(tasks::Column::DeletedAt.is_null());
+    }
 
+    query
+        // .into_model::<ResponseTask>()
+        .all(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting all tasks: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error getting all tasks")
+        })
+}
+```
+
+将原文件 `src/api/tasks/get_all_tasks.rs`
+
+```rust
+use axum::http::StatusCode;
+use axum::{extract::State, Extension, Json};
+use entity::users::Model as UserModel;
+use entity::{prelude::*, tasks};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use types::task::{ResponseDataTasks, ResponseTask};
+
+use crate::util::app_error::AppError;
+
+pub async fn get_all_tasks(
+    Extension(user): Extension<UserModel>,
+    State(db): State<DatabaseConnection>,
+) -> Result<Json<ResponseDataTasks>, AppError> {
+    let tasks = Tasks::find()
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .filter(tasks::Column::DeletedAt.is_null())
+        // .into_model::<ResponseTask>()
+        .all(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting all tasks: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error getting all tasks")
+        })?
+        .into_iter()
+        .map(|task| ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            completed_at: task.completed_at.map(|time| time.to_string()),
+        })
+        .collect::<Vec<ResponseTask>>();
+
+    Ok(Json(ResponseDataTasks { data: tasks }))
+}
+```
+
+简化为 
+
+```rust
+use axum::{extract::State, Extension, Json};
+use entity::users::Model as UserModel;
+use sea_orm::DatabaseConnection;
+use types::task::{ResponseDataTasks, ResponseTask};
+
+use crate::queries::task_queries;
+use crate::util::app_error::AppError;
+
+pub async fn get_all_tasks(
+    Extension(user): Extension<UserModel>,
+    State(db): State<DatabaseConnection>,
+) -> Result<Json<ResponseDataTasks>, AppError> {
+    let tasks = task_queries::get_all_tasks(&db, user.id, true)
+        .await?
+        .into_iter()
+        .map(|task| ResponseTask {
+            id: task.id,
+            title: task.title,
+            priority: task.priority,
+            description: task.description,
+            completed_at: task.completed_at.map(|time| time.to_string()),
+        })
+        .collect::<Vec<ResponseTask>>();
+
+    Ok(Json(ResponseDataTasks { data: tasks }))
+}
+```
 
 
 

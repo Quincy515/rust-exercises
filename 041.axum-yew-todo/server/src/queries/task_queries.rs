@@ -56,6 +56,26 @@ pub async fn save_active_task(
     convert_active_to_model(task)
 }
 
+pub async fn get_all_tasks(
+    db: &DatabaseConnection,
+    user_id: i32,
+    delete: bool,
+) -> Result<Vec<TasksModel>, AppError> {
+    let mut query = Tasks::find().filter(tasks::Column::UserId.eq(Some(user_id)));
+    if delete {
+        query = query.filter(tasks::Column::DeletedAt.is_null());
+    }
+
+    query
+        // .into_model::<ResponseTask>()
+        .all(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting all tasks: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Error getting all tasks")
+        })
+}
+
 fn convert_active_to_model(active_task: tasks::ActiveModel) -> Result<TasksModel, AppError> {
     active_task.try_into_model().map_err(|err| {
         eprintln!("Error converting task active model to model: {err:?}");
