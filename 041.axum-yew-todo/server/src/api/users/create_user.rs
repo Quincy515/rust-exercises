@@ -6,6 +6,7 @@ use sea_orm::{
 };
 use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
 
+use crate::queries::user_queries::save_active_user;
 use crate::util::{app_error::AppError, hash::hash_password, jwt::create_token};
 
 pub async fn create_user(
@@ -19,28 +20,7 @@ pub async fn create_user(
     new_user.username = Set(request_user.username.clone());
     new_user.password = Set(hash_password(&request_user.password)?);
     new_user.token = Set(Some(create_token(&secret, request_user.username)?));
-    let user = new_user
-        .save(&db)
-        .await
-        .map_err(|err| {
-            let error_message = err.to_string();
-            if error_message
-                .contains("duplicate key value violates unique constraint \"users_username_key\"")
-            {
-                AppError::new(
-                    StatusCode::BAD_REQUEST,
-                    "Username already taken, try again with a different user name",
-                )
-            } else {
-                eprintln!("Error creating user: {:?}", &err);
-                AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-            }
-        })?
-        .try_into_model()
-        .map_err(|err| {
-            eprintln!("Error converting user back into model: {:?}", err);
-            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-        })?;
+    let user = save_active_user(&db, new_user).await?;
 
     create_default_tasks_for_user(&db, &user).await?;
 

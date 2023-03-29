@@ -29,8 +29,8 @@
   - [简化 `get_all_task.rs`](#简化-get_all_taskrs)
   - [简化 `get_one_task.rs`](#简化-get_one_taskrs)
   - [简化 `update_tasks.rs`](#简化-update_tasksrs)
+  - [简化 `create_user.rs`](#简化-create_userrs)
   - [简化 `.rs`](#简化-rs)
-  - [简化 `.rs`](#简化-rs-1)
 
 ## 1.Introduce the project
 
@@ -3221,16 +3221,11 @@ pub async fn update_task(
 ```rust
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     Extension, Json,
 };
 use chrono::Utc;
-use entity::tasks::{self, Entity as Tasks};
 use entity::users::Model as UserModel;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
-    Set,
-};
+use sea_orm::{DatabaseConnection, IntoActiveModel, Set};
 use types::task::RequestTask;
 
 use crate::{
@@ -3299,34 +3294,182 @@ pub async fn update_task(
     Ok(())
 }
 ```
-[代码变动]()
-### 简化 `.rs`
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/9c2a197b87d29b386e19ad2bac8e88f1362da14b#diff-b7136d3e53a5279956cad1bc3652f43b2e12d7d0e3a83669358d0038b10a2a2b)
+### 简化 `create_user.rs`
 
-在 `src/queries/task_queries.rs` 中新增 `` 函数
+在 `src/queries/user_queries.rs` 中新增 `save_active_user` 函数
 
 ```rust
+use axum::http::StatusCode;
+use entity::{
+    prelude::*,
+    users::{self, Model as UsersModel},
+};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, TryIntoModel};
 
+use crate::util::app_error::AppError;
+
+pub async fn save_active_user(
+    db: &DatabaseConnection,
+    user: users::ActiveModel,
+) -> Result<UsersModel, AppError> {
+    let user = user.save(db).await.map_err(|err| {
+        let error_message = err.to_string();
+        if error_message
+            .contains("duplicate key value violates unique constraint \"users_username_key\"")
+        {
+            AppError::new(
+                StatusCode::BAD_REQUEST,
+                "Username already taken, try again with a different user name",
+            )
+        } else {
+            eprintln!("Error creating user: {:?}", &err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+        }
+    })?;
+
+    convert_active_to_model(user)
+}
+
+fn convert_active_to_model(active_user: users::ActiveModel) -> Result<UsersModel, AppError> {
+    active_user.try_into_model().map_err(|err| {
+        eprintln!("Error converting user active model to model: {err:?}");
+        AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
+    })
+}
 ```
 
-将原文件 `src/api/tasks/`
+将原文件 `src/api/users/create_user.rs`
 
 ```rust
+use axum::{extract::State, http::StatusCode, Json};
+use entity::tasks::Entity as Tasks;
+use entity::{tasks, users};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set, TryIntoModel,
+};
+use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
 
+use crate::util::{app_error::AppError, hash::hash_password, jwt::create_token};
+
+pub async fn create_user(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let mut new_user = users::ActiveModel {
+        ..Default::default()
+    };
+    new_user.username = Set(request_user.username.clone());
+    new_user.password = Set(hash_password(&request_user.password)?);
+    new_user.token = Set(Some(create_token(&secret, request_user.username)?));
+    let user = new_user
+        .save(&db)
+        .await
+        .map_err(|err| {
+            let error_message = err.to_string();
+            if error_message
+                .contains("duplicate key value violates unique constraint \"users_username_key\"")
+            {
+                AppError::new(
+                    StatusCode::BAD_REQUEST,
+                    "Username already taken, try again with a different user name",
+                )
+            } else {
+                eprintln!("Error creating user: {:?}", &err);
+                AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+        })?
+        .try_into_model()
+        .map_err(|err| {
+            eprintln!("Error converting user back into model: {:?}", err);
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+        })?;
+
+    create_default_tasks_for_user(&db, &user).await?;
+
+    Ok(Json(ResponseDataUser {
+        data: ResponseUser {
+            id: user.id,
+            username: user.username,
+            token: user.token.unwrap_or_default(),
+        },
+    }))
+}
+
+async fn create_default_tasks_for_user(
+    db: &DatabaseConnection,
+    user: &users::Model,
+) -> Result<(), AppError> {
+    let default_tasks = Tasks::find()
+        .filter(tasks::Column::IsDefault.eq(Some(true)))
+        .filter(tasks::Column::DeletedAt.is_null())
+        .all(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting default tasks: {:?}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error applying default tasks to new account",
+            )
+        })?;
+    Ok(for default_task in default_tasks {
+        let task = tasks::ActiveModel {
+            priority: Set(default_task.priority),
+            title: Set(default_task.title),
+            completed_at: Set(default_task.completed_at),
+            description: Set(default_task.description),
+            deleted_at: Set(default_task.deleted_at),
+            user_id: Set(Some(user.id)),
+            ..Default::default()
+        };
+
+        task.save(db).await.map_err(|err| {
+            eprintln!("Error creating task from default: {:?}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error saving new default task for user",
+            )
+        })?;
+    })
+}
 ```
 简化为 
 
 ```rust
+pub async fn create_user(
+    State(db): State<DatabaseConnection>,
+    State(secret): State<String>,
+    Json(request_user): Json<RequestCreateUser>,
+) -> Result<Json<ResponseDataUser>, AppError> {
+    let mut new_user = users::ActiveModel {
+        ..Default::default()
+    };
+    new_user.username = Set(request_user.username.clone());
+    new_user.password = Set(hash_password(&request_user.password)?);
+    new_user.token = Set(Some(create_token(&secret, request_user.username)?));
+    let user = save_active_user(&db, new_user).await?;
 
+    create_default_tasks_for_user(&db, &user).await?;
+
+    Ok(Json(ResponseDataUser {
+        data: ResponseUser {
+            id: user.id,
+            username: user.username,
+            token: user.token.unwrap_or_default(),
+        },
+    }))
+}
 ```
 ### 简化 `.rs`
 
-在 `src/queries/task_queries.rs` 中新增 `` 函数
+在 `src/queries/user_queries.rs` 中新增 `` 函数
 
 ```rust
 
 ```
 
-将原文件 `src/api/tasks/`
+将原文件 `src/api/users/`
 
 ```rust
 

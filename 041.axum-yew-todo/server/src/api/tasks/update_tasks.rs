@@ -1,15 +1,10 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     Extension, Json,
 };
 use chrono::Utc;
-use entity::tasks::{self, Entity as Tasks};
 use entity::users::Model as UserModel;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
-    Set,
-};
+use sea_orm::{DatabaseConnection, IntoActiveModel, Set};
 use types::task::RequestTask;
 
 use crate::{
