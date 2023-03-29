@@ -28,9 +28,9 @@
   - [简化 `save_active_task`](#简化-save_active_task)
   - [简化 `get_all_task.rs`](#简化-get_all_taskrs)
   - [简化 `get_one_task.rs`](#简化-get_one_taskrs)
+  - [简化 `update_tasks.rs`](#简化-update_tasksrs)
   - [简化 `.rs`](#简化-rs)
   - [简化 `.rs`](#简化-rs-1)
-  - [简化 `.rs`](#简化-rs-2)
 
 ## 1.Introduce the project
 
@@ -3089,6 +3089,216 @@ pub async fn get_one_task(
 }
 ```
 
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/83c68779281a69cc4259234c8f6750bc3c813948#diff-f37ba02f6174cc71746f0285aa5689cad496436d40f9cc4dfbb63f4f1481b508)
+### 简化 `update_tasks.rs`
+
+将原文件 `src/api/tasks/update_tasks.rs`
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Extension, Json,
+};
+use chrono::Utc;
+use entity::tasks::{self, Entity as Tasks};
+use entity::users::Model as UserModel;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    Set,
+};
+use types::task::RequestTask;
+
+use crate::util::app_error::AppError;
+
+pub async fn mark_completed(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task to update: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
+        })?;
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    let now = Utc::now();
+    task.completed_at = Set(Some(now.into()));
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error marking task as completed: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while updating completed at",
+        )
+    })?;
+    Ok(())
+}
+
+pub async fn mark_uncompleted(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task to update: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
+        })?;
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    task.completed_at = Set(None);
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error marking task as uncompleted: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while updating uncompleted at",
+        )
+    })?;
+    Ok(())
+}
+
+pub async fn update_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+    Json(request_task): Json<RequestTask>,
+) -> Result<(), AppError> {
+    let task = Tasks::find_by_id(task_id)
+        .filter(tasks::Column::UserId.eq(Some(user.id)))
+        .one(&db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting task to update: {err:?}");
+            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
+        })?;
+    let mut task = if let Some(task) = task {
+        task.into_active_model()
+    } else {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
+    };
+
+    if let Some(priority) = request_task.priority {
+        task.priority = Set(priority);
+    }
+    if let Some(description) = request_task.description {
+        task.description = Set(description);
+    }
+    if let Some(title) = request_task.title {
+        task.title = Set(title);
+    }
+    if let Some(completed_at) = request_task.completed_at {
+        task.completed_at = Set(completed_at);
+    }
+
+    task.save(&db).await.map_err(|err| {
+        eprintln!("Error marking task as uncompleted: {err:?}");
+        AppError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error while updating uncompleted at",
+        )
+    })?;
+    Ok(())
+}
+```
+
+简化为 
+
+```rust
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Extension, Json,
+};
+use chrono::Utc;
+use entity::tasks::{self, Entity as Tasks};
+use entity::users::Model as UserModel;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter,
+    Set,
+};
+use types::task::RequestTask;
+
+use crate::{
+    queries::task_queries::{find_task_by_id, save_active_task},
+    util::app_error::AppError,
+};
+
+pub async fn mark_completed(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let mut task = find_task_by_id(&db, task_id, user.id)
+        .await?
+        .into_active_model();
+
+    let now = Utc::now();
+    task.completed_at = Set(Some(now.into()));
+
+    save_active_task(&db, task).await?;
+
+    Ok(())
+}
+
+pub async fn mark_uncompleted(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+) -> Result<(), AppError> {
+    let mut task = find_task_by_id(&db, task_id, user.id)
+        .await?
+        .into_active_model();
+
+    task.completed_at = Set(None);
+
+    save_active_task(&db, task).await?;
+
+    Ok(())
+}
+
+pub async fn update_task(
+    Path(task_id): Path<i32>,
+    State(db): State<DatabaseConnection>,
+    Extension(user): Extension<UserModel>,
+    Json(request_task): Json<RequestTask>,
+) -> Result<(), AppError> {
+    let mut task = find_task_by_id(&db, task_id, user.id)
+        .await?
+        .into_active_model();
+
+    if let Some(priority) = request_task.priority {
+        task.priority = Set(priority);
+    }
+    if let Some(description) = request_task.description {
+        task.description = Set(description);
+    }
+    if let Some(title) = request_task.title {
+        task.title = Set(title);
+    }
+    if let Some(completed_at) = request_task.completed_at {
+        task.completed_at = Set(completed_at);
+    }
+
+    save_active_task(&db, task).await?;
+
+    Ok(())
+}
+```
 [代码变动]()
 ### 简化 `.rs`
 
@@ -3100,12 +3310,14 @@ pub async fn get_one_task(
 
 将原文件 `src/api/tasks/`
 
+```rust
+
+```
 简化为 
 
 ```rust
 
 ```
-
 ### 简化 `.rs`
 
 在 `src/queries/task_queries.rs` 中新增 `` 函数
@@ -3116,16 +3328,12 @@ pub async fn get_one_task(
 
 将原文件 `src/api/tasks/`
 
-简化为 
-
-### 简化 `.rs`
-
-在 `src/queries/task_queries.rs` 中新增 `` 函数
-
 ```rust
 
 ```
 
-将原文件 `src/api/tasks/`
-
 简化为 
+
+```rust
+
+```

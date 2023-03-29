@@ -12,36 +12,25 @@ use sea_orm::{
 };
 use types::task::RequestTask;
 
-use crate::util::app_error::AppError;
+use crate::{
+    queries::task_queries::{find_task_by_id, save_active_task},
+    util::app_error::AppError,
+};
 
 pub async fn mark_completed(
     Path(task_id): Path<i32>,
     State(db): State<DatabaseConnection>,
     Extension(user): Extension<UserModel>,
 ) -> Result<(), AppError> {
-    let task = Tasks::find_by_id(task_id)
-        .filter(tasks::Column::UserId.eq(Some(user.id)))
-        .one(&db)
-        .await
-        .map_err(|err| {
-            eprintln!("Error getting task to update: {err:?}");
-            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
-        })?;
-    let mut task = if let Some(task) = task {
-        task.into_active_model()
-    } else {
-        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
-    };
+    let mut task = find_task_by_id(&db, task_id, user.id)
+        .await?
+        .into_active_model();
 
     let now = Utc::now();
     task.completed_at = Set(Some(now.into()));
-    task.save(&db).await.map_err(|err| {
-        eprintln!("Error marking task as completed: {err:?}");
-        AppError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while updating completed at",
-        )
-    })?;
+
+    save_active_task(&db, task).await?;
+
     Ok(())
 }
 
@@ -50,28 +39,14 @@ pub async fn mark_uncompleted(
     State(db): State<DatabaseConnection>,
     Extension(user): Extension<UserModel>,
 ) -> Result<(), AppError> {
-    let task = Tasks::find_by_id(task_id)
-        .filter(tasks::Column::UserId.eq(Some(user.id)))
-        .one(&db)
-        .await
-        .map_err(|err| {
-            eprintln!("Error getting task to update: {err:?}");
-            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
-        })?;
-    let mut task = if let Some(task) = task {
-        task.into_active_model()
-    } else {
-        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
-    };
+    let mut task = find_task_by_id(&db, task_id, user.id)
+        .await?
+        .into_active_model();
 
     task.completed_at = Set(None);
-    task.save(&db).await.map_err(|err| {
-        eprintln!("Error marking task as uncompleted: {err:?}");
-        AppError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while updating uncompleted at",
-        )
-    })?;
+
+    save_active_task(&db, task).await?;
+
     Ok(())
 }
 
@@ -81,19 +56,9 @@ pub async fn update_task(
     Extension(user): Extension<UserModel>,
     Json(request_task): Json<RequestTask>,
 ) -> Result<(), AppError> {
-    let task = Tasks::find_by_id(task_id)
-        .filter(tasks::Column::UserId.eq(Some(user.id)))
-        .one(&db)
-        .await
-        .map_err(|err| {
-            eprintln!("Error getting task to update: {err:?}");
-            AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "An error happend")
-        })?;
-    let mut task = if let Some(task) = task {
-        task.into_active_model()
-    } else {
-        return Err(AppError::new(StatusCode::NOT_FOUND, "Task not found"));
-    };
+    let mut task = find_task_by_id(&db, task_id, user.id)
+        .await?
+        .into_active_model();
 
     if let Some(priority) = request_task.priority {
         task.priority = Set(priority);
@@ -108,12 +73,7 @@ pub async fn update_task(
         task.completed_at = Set(completed_at);
     }
 
-    task.save(&db).await.map_err(|err| {
-        eprintln!("Error marking task as uncompleted: {err:?}");
-        AppError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Error while updating uncompleted at",
-        )
-    })?;
+    save_active_task(&db, task).await?;
+
     Ok(())
 }
