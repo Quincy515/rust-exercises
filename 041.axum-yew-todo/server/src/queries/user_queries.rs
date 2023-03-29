@@ -1,8 +1,5 @@
 use axum::http::StatusCode;
-use entity::{
-    prelude::*,
-    users::{self, Model as UsersModel},
-};
+use entity::users::{self, Model as UsersModel};
 use sea_orm::{ActiveModelTrait, DatabaseConnection, TryIntoModel};
 
 use crate::util::app_error::AppError;

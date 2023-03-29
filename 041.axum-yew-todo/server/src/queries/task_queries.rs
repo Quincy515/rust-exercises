@@ -76,6 +76,21 @@ pub async fn get_all_tasks(
         })
 }
 
+pub async fn get_default_task(db: &DatabaseConnection) -> Result<Vec<TasksModel>, AppError> {
+    Tasks::find()
+        .filter(tasks::Column::IsDefault.eq(Some(true)))
+        .filter(tasks::Column::DeletedAt.is_null())
+        .all(db)
+        .await
+        .map_err(|err| {
+            eprintln!("Error getting default tasks: {:?}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error applying default tasks to new account",
+            )
+        })
+}
+
 fn convert_active_to_model(active_task: tasks::ActiveModel) -> Result<TasksModel, AppError> {
     active_task.try_into_model().map_err(|err| {
         eprintln!("Error converting task active model to model: {err:?}");

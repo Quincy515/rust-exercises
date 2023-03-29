@@ -1,11 +1,10 @@
-use axum::{extract::State, http::StatusCode, Json};
-use entity::tasks::Entity as Tasks;
+use axum::{extract::State, Json};
+
 use entity::{tasks, users};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set, TryIntoModel,
-};
+use sea_orm::{DatabaseConnection, Set};
 use types::user::{RequestCreateUser, ResponseDataUser, ResponseUser};
 
+use crate::queries::task_queries::{get_default_task, save_active_task};
 use crate::queries::user_queries::save_active_user;
 use crate::util::{app_error::AppError, hash::hash_password, jwt::create_token};
 
@@ -37,18 +36,8 @@ async fn create_default_tasks_for_user(
     db: &DatabaseConnection,
     user: &users::Model,
 ) -> Result<(), AppError> {
-    let default_tasks = Tasks::find()
-        .filter(tasks::Column::IsDefault.eq(Some(true)))
-        .filter(tasks::Column::DeletedAt.is_null())
-        .all(db)
-        .await
-        .map_err(|err| {
-            eprintln!("Error getting default tasks: {:?}", err);
-            AppError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error applying default tasks to new account",
-            )
-        })?;
+    let default_tasks = get_default_task(db).await?;
+
     Ok(for default_task in default_tasks {
         let task = tasks::ActiveModel {
             priority: Set(default_task.priority),
@@ -60,12 +49,6 @@ async fn create_default_tasks_for_user(
             ..Default::default()
         };
 
-        task.save(db).await.map_err(|err| {
-            eprintln!("Error creating task from default: {:?}", err);
-            AppError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Error saving new default task for user",
-            )
-        })?;
+        save_active_task(&db, task).await?;
     })
 }
