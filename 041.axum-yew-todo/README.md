@@ -1,3 +1,5 @@
+[yew-tutorial](./yew-tutorial.md)
+
 - [1.Introduce the project](#1introduce-the-project)
 - [2.Hello World](#2hello-world)
 - [3.Create User](#3create-user)
@@ -33,7 +35,6 @@
   - [简化 `create_default_tasks_for_user`](#简化-create_default_tasks_for_user)
   - [简化 `login.rs`](#简化-loginrs)
   - [简化 `logout.rs`](#简化-logoutrs)
-  - [简化 \`\`](#简化-)
 
 ## 1.Introduce the project
 
@@ -3724,20 +3725,4 @@ pub async fn logout(
 }
 ```
 
-[代码变动]()
-### 简化 ``
-
-在 `src/queries/user_queries.rs` 中新增 `` 函数
-
-将原文件 ``
-
-```rust
-
-```
-
-简化为
-
-```rust
-
-```
-[代码变动]()
+[代码变动](https://github.com/CusterFun/rust-exercises/commit/37a0b891152c87e906b1b9be0571bc7b687bfe60#diff-4ac4689c9e9c17852be3d67d135a611413354404d7faf3e1e83799a39fe18525)

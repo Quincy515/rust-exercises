@@ -1,26 +1,29 @@
 {
-  "folders": [
-	{
-		"path": "server"
-	},
-	{
-		"path": "types"
-	},
-	{
-		"path": "entity"
-	}
-],
-"settings": {
-	"sqltools.connections": [
+	"folders": [
 		{
-			"previewLimit": 50,
-			"server": "localhost",
-			"port": 5432,
-			"driver": "PostgreSQL",
-			"name": "postgres-todo",
-			"database": "user_task",
-			"username": "postgres"
+			"path": "server"
+		},
+		{
+			"path": "types"
+		},
+		{
+			"path": "entity"
+		},
+		{
+			"path": "web"
 		}
-	]
-}
+	],
+	"settings": {
+		"sqltools.connections": [
+			{
+				"previewLimit": 50,
+				"server": "localhost",
+				"port": 5432,
+				"driver": "PostgreSQL",
+				"name": "postgres-todo",
+				"database": "user_task",
+				"username": "postgres"
+			}
+		]
+	}
 }
