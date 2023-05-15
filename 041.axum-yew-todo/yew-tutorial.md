@@ -4,8 +4,9 @@
   - [1. 首先在控制台执行](#1-首先在控制台执行)
   - [2. 然后安装 `cargo` 依赖](#2-然后安装-cargo-依赖)
   - [3. 在根目录下新建 `web/index.html`](#3-在根目录下新建-webindexhtml)
-  - [4. 在 `web/src/main.rs` 中添加初始化](#4-在-websrcmainrs-中添加初始化)
+  - [4. 新增 `lib.rs` 和 `main.rs`](#4-新增-librs-和-mainrs)
   - [5. 运行服务，访问浏览器](#5-运行服务访问浏览器)
+- [Bootstrap CSS](#bootstrap-css)
 
 ## setting up yew
 
@@ -78,17 +79,24 @@ version = "0.3"
 </html>
 ```
    
-### 4. 在 `web/src/main.rs` 中添加初始化
+### 4. 新增 `lib.rs` 和 `main.rs`
+在 `web/src/lib.rs` 中添加 HelloWorld
 
 ```rust
 use yew::prelude::*;
 
 #[function_component(App)]
-fn app() -> Html {
+pub fn app() -> Html {
     html! {
         <h1>{ "Hello World" }</h1>
     }
 }
+```
+
+在 `web/src/main.rs` 中添加初始化
+
+```rust
+use web::App;
 
 fn main() {
     yew::Renderer::<App>::new().render();
@@ -112,4 +120,35 @@ fn main() {
 trunk serve
 ```
 
-打开浏览器访问 http://localhost:8080
+打开浏览器访问 http://127.0.0.1:8080/
+
+## Bootstrap CSS
+
+https://getbootstrap.com/
+https://getbootstrap.com/docs/5.3/getting-started/download/#cdn-via-jsdelivr
+
+将 CDN 添加到 `index.html` 中
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-aFq/bzH65dt+w6FI2ooMVUpc+21e0SRygnTpmBvdBgSdnuTN7QbdgL+OapgHtvPp" crossorigin="anonymous">
+</head>
+
+<body>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-qKXV1j0HvMUeCBQ+QVp7JcfGl760yU08IQ+GpUo5hlbpg51QRiuqHAJz8+BrxE/N"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
+```
+
