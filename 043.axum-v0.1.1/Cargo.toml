@@ -1,0 +1,79 @@
+[package]
+authors = ["David Pedersen <david.pdrsn@gmail.com>"]
+categories = ["asynchronous", "network-programming", "web-programming"]
+description = "Web framework that focuses on ergonomics and modularity"
+documentation = "https://docs.rs/axum/0.1.1"
+edition = "2018"
+homepage = "https://github.com/tokio-rs/axum"
+keywords = ["http", "web", "framework"]
+license = "MIT"
+name = "axum"
+readme = "README.md"
+repository = "https://github.com/tokio-rs/axum"
+version = "0.1.1"
+
+[features]
+default = []
+ws = ["tokio-tungstenite", "sha-1", "base64"]
+multipart = ["multer", "mime"]
+
+[dependencies]
+async-trait = "0.1"
+bytes = "1.0"
+futures-util = "0.3"
+http = "0.2"
+http-body = "0.4"
+hyper = { version = "0.14", features = ["server", "tcp"] }
+pin-project = "1.0"
+regex = "1.5"
+serde = "1.0"
+serde_json = "1.0"
+serde_urlencoded = "0.7"
+tokio = { version = "1", features = ["time"] }
+tokio-util = "0.6"
+tower = { version = "0.4", features = ["util", "buffer", "make"] }
+tower-http = { version = "0.1", features = ["add-extension", "map-response-body"] }
+
+# optional dependencies
+tokio-tungstenite = { optional = true, version = "0.14" }
+sha-1 = { optional = true, version = "0.9.6" }
+base64 = { optional = true, version = "0.13" }
+headers = { optional = true, version = "0.3" }
+multer = { optional = true, version = "2.0.0" }
+mime = { optional = true, version = "0.3" }
+
+[dev-dependencies]
+askama = "0.10.5"
+bb8 = "0.7.0"
+bb8-postgres = "0.7.0"
+futures = "0.3"
+hyper = { version = "0.14", features = ["full"] }
+reqwest = { version = "0.11", features = ["json", "stream"] }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.6.1", features = ["macros", "rt", "rt-multi-thread"] }
+tokio-postgres = "0.7.2"
+tracing = "0.1"
+tracing-subscriber = "0.2"
+uuid = { version = "0.8", features = ["serde", "v4"] }
+
+[dev-dependencies.tower]
+version = "0.4"
+features = [
+    "util",
+    "timeout",
+    "limit",
+    "load-shed",
+    "steer",
+    "filter",
+]
+
+[dev-dependencies.tower-http]
+version = "0.1"
+features = ["full"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+features = ["ws"]
