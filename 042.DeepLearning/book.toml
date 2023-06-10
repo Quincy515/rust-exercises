@@ -1,0 +1,13 @@
+[book]
+authors = ["Custer"]
+language = "en"
+multilingual = false
+src = "src"
+title = "DeepLearning with Rust"
+
+[output.html]
+mathjax-support = true
+
+[dependencies]
+ndarray = "0.15.6"
+ndarray-linalg = "0.16.0"
