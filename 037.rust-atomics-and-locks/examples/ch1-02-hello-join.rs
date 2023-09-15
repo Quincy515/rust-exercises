@@ -6,6 +6,7 @@ fn main() {
 
     println!("Hello from the main thread.");
 
+    // join 等待直到线程结束执行并且返回 std::thread::Result
     t1.join().unwrap();
     t2.join().unwrap();
 }
