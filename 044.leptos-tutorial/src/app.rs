@@ -1,5 +1,6 @@
 use leptos::*;
 
+use crate::iteration::{DynamicList, StaticList, StaticView};
 use crate::progress_bar::ProgressBar;
 
 #[component]
@@ -20,9 +21,16 @@ pub fn App() -> impl IntoView {
                 {move || count()}
             </button>
             <br/>
-           <ProgressBar progress=count/>
-           <br/>
-           <ProgressBar progress=Signal::derive(double_count)/>
+            <ProgressBar progress=count/>
+            <br/>
+            <ProgressBar progress=Signal::derive(double_count)/>
+            <br/>
+            <StaticView />
+            <br/>
+            <StaticList length=4/>
+            <br/>
+            <DynamicList initial_length=4/>
+
         </div>
     }
 }
