@@ -1,8 +1,11 @@
 use leptos::*;
 
+use crate::progress_bar::ProgressBar;
+
 #[component]
 pub fn App() -> impl IntoView {
     let (count, set_count) = create_signal(0);
+    let double_count = move || count() * 2;
 
     view! {
         <div class="my-0 mx-auto max-w-3xl text-center">
@@ -16,6 +19,10 @@ pub fn App() -> impl IntoView {
                 "Click me: "
                 {move || count()}
             </button>
+            <br/>
+           <ProgressBar progress=count/>
+           <br/>
+           <ProgressBar progress=Signal::derive(double_count)/>
         </div>
     }
 }
