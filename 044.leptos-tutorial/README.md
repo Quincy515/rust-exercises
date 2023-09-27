@@ -5,7 +5,7 @@ npm install -D tailwindcss daisyui@latest
 ```
 
 - https://leptos-rs.github.io/leptos/
-- https://daisyui.com/docs/install/
+- https://daisyui.com/docs/install/?lang=zh_hant
 - https://github.com/LemmyNet/lemmy-ui-leptos
 - https://github.com/leptos-rs/leptos/blob/main/examples/tailwind_csr_trunk/README.md
 

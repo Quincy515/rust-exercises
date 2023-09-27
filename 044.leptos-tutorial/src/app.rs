@@ -7,14 +7,14 @@ use crate::progress_bar::ProgressBar;
 pub fn App() -> impl IntoView {
     let (count, set_count) = create_signal(0);
     let double_count = move || count() * 2;
+    let html = "<p>This HTML will be injected.</p>";
 
     view! {
         <div class="my-0 mx-auto max-w-3xl text-center">
             <h2 class="p-6 text-4xl">"Welcome to Leptos with Tailwind"</h2>
             <p class="px-10 pb-10 text-left">"Tailwind will scan your Rust files for Tailwind class names and compile them into a CSS file."</p>
             <button
-                class="btn"
-                class:red=move||count()%2==1
+                class=("btn",move||count()%2==1)
                 on:click=move |_| set_count.update(|n| *n += 1)
             >
                 "Click me: "
@@ -31,6 +31,13 @@ pub fn App() -> impl IntoView {
             <br/>
             <DynamicList initial_length=4/>
 
+            <progress max="50" value=double_count/*{move || count.get()*2}*//>
+            <p>
+                "Double Count: "
+                {double_count}
+            </p>
+            <br/>
+            <div inner_html=html/>
         </div>
     }
 }
