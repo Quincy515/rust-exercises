@@ -1,4 +1,4 @@
-use leptos::{view, component, IntoView, ReadSignal, Signal};
+use leptos::{view, component, IntoView, Signal};
 
 #[component]
 pub fn ProgressBar(

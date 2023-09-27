@@ -1,5 +1,6 @@
 use leptos::*;
 
+use crate::forms::{ControlledInputs, UncontrolledInputs};
 use crate::iteration::{DynamicList, StaticList, StaticView};
 use crate::progress_bar::ProgressBar;
 
@@ -21,6 +22,14 @@ pub fn App() -> impl IntoView {
                 {move || count()}
             </button>
             <br/>
+                        <progress max="50" value=double_count/*{move || count.get()*2}*//>
+            <p>
+                "Double Count: "
+                {double_count}
+            </p>
+            <br/>
+            <div inner_html=html/>
+            <br/>
             <ProgressBar progress=count/>
             <br/>
             <ProgressBar progress=Signal::derive(double_count)/>
@@ -30,14 +39,10 @@ pub fn App() -> impl IntoView {
             <StaticList length=4/>
             <br/>
             <DynamicList initial_length=4/>
-
-            <progress max="50" value=double_count/*{move || count.get()*2}*//>
-            <p>
-                "Double Count: "
-                {double_count}
-            </p>
             <br/>
-            <div inner_html=html/>
+            <ControlledInputs />
+            <br/>
+            <UncontrolledInputs />
         </div>
     }
 }
