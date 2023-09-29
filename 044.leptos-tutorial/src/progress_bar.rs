@@ -7,11 +7,5 @@ pub fn ProgressBar(
     #[prop(into)]
     progress: Signal<i32>
 ) -> impl IntoView {
-    view!{
-        <progress
-            class="progress progress-primary w-56"
-            max=max
-            value=progress
-        />
-    }
+    view! { <progress class="progress progress-primary w-56" max=max value=progress></progress> }
 }

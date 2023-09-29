@@ -698,6 +698,36 @@ html {
   --tw-backdrop-sepia:  ;
 }
 
+.alert {
+  display: grid;
+  width: 100%;
+  grid-auto-flow: row;
+  align-content: flex-start;
+  align-items: center;
+  justify-items: center;
+  gap: 1rem;
+  text-align: center;
+  border-width: 1px;
+  --tw-border-opacity: 1;
+  border-color: hsl(var(--b2) / var(--tw-border-opacity));
+  padding: 1rem;
+  --tw-text-opacity: 1;
+  color: hsl(var(--bc) / var(--tw-text-opacity));
+  border-radius: var(--rounded-box, 1rem);
+  --alert-bg: hsl(var(--b2));
+  --alert-bg-mix: hsl(var(--b1));
+  background-color: var(--alert-bg);
+}
+
+@media (min-width: 640px) {
+  .alert {
+    grid-auto-flow: column;
+    grid-template-columns: auto minmax(auto,1fr);
+    justify-items: start;
+    text-align: left;
+  }
+}
+
 .avatar.placeholder > div {
   display: flex;
   align-items: center;
@@ -1014,6 +1044,14 @@ html {
   border-radius: var(--rounded-box, 1rem);
 }
 
+.alert-error {
+  border-color: hsl(var(--er) / 0.2);
+  --tw-text-opacity: 1;
+  color: hsl(var(--erc) / var(--tw-text-opacity));
+  --alert-bg: hsl(var(--er));
+  --alert-bg-mix: hsl(var(--b1));
+}
+
 .btm-nav > * .label {
   font-size: 1rem;
   line-height: 1.5rem;
@@ -1242,30 +1280,21 @@ html {
   color: hsl(var(--bc) / var(--tw-text-opacity));
 }
 
+.input input:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
 .input[list]::-webkit-calendar-picker-indicator {
   line-height: 1em;
 }
 
-.input-bordered {
-  --tw-border-opacity: 0.2;
-}
-
-.input:focus {
+.input:focus,
+  .input:focus-within {
   outline-style: solid;
   outline-width: 2px;
   outline-offset: 2px;
   outline-color: hsl(var(--bc) / 0.2);
-}
-
-.input-ghost {
-  --tw-bg-opacity: 0.05;
-}
-
-.input-ghost:focus {
-  --tw-bg-opacity: 1;
-  --tw-text-opacity: 1;
-  color: hsl(var(--bc) / var(--tw-text-opacity));
-  box-shadow: none;
 }
 
 .input-primary {
@@ -1273,7 +1302,8 @@ html {
   border-color: hsl(var(--p) / var(--tw-border-opacity));
 }
 
-.input-primary:focus {
+.input-primary:focus,
+    .input-primary:focus-within {
   outline-color: hsl(var(--p) / 1);
 }
 
@@ -1644,10 +1674,6 @@ html {
   margin-left: -1px;
 }
 
-.m-2 {
-  margin: 0.5rem;
-}
-
 .mx-auto {
   margin-left: auto;
   margin-right: auto;
@@ -1656,10 +1682,6 @@ html {
 .my-0 {
   margin-top: 0px;
   margin-bottom: 0px;
-}
-
-.ml-2 {
-  margin-left: 0.5rem;
 }
 
 .ml-1 {
@@ -1690,8 +1712,12 @@ html {
   max-width: 20rem;
 }
 
-.rounded-full {
-  border-radius: 9999px;
+.shrink-0 {
+  flex-shrink: 0;
+}
+
+.stroke-current {
+  stroke: currentColor;
 }
 
 .p-6 {

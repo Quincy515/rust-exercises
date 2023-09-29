@@ -17,9 +17,8 @@ pub fn ControlledInputs() -> impl IntoView {
                 type="text"
                 placeholder="Type here"
                 class="input input-primary w-full max-w-xs"
-                on:input=move |ev| {
-                    set_name(event_target_value(&ev))
-                }
+                on:input=move |ev| { set_name(event_target_value(&ev)) }
+
                 prop:value=name
             />
         </div>
@@ -39,12 +38,13 @@ pub fn UncontrolledInputs() -> impl IntoView {
     view! {
         <form on:submit=on_submit>
             <div class="join">
-                <input type="text"
+                <input
+                    type="text"
                     value=name
                     node_ref=input_element
                     class="input input-primary w-full max-w-xs join-item"
                 />
-                <input class="btn join-item ml-1" type="submit" value="Submit" />
+                <input class="btn join-item ml-1" type="submit" value="Submit"/>
             </div>
         </form>
         <p>"Name is: " {name}</p>
