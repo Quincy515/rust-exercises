@@ -3,6 +3,7 @@ use leptos::*;
 use crate::error_handling::{NumericInput, NumericInputErrorBoundary};
 use crate::forms::{ControlledInputs, UncontrolledInputs};
 use crate::iteration::{DynamicList, StaticList, StaticView};
+use crate::parent_child_communication::Communicate;
 use crate::progress_bar::ProgressBar;
 
 #[component]
@@ -47,6 +48,8 @@ pub fn App() -> impl IntoView {
             <NumericInput/>
             <br/>
             <NumericInputErrorBoundary/>
+            <br/>
+            <Communicate/>
         </div>
     }
 }
