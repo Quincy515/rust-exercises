@@ -2,12 +2,10 @@ use leptos::{component, create_signal, view, Children, CollectView, IntoView, Si
 
 #[component]
 pub fn PassingChildrenToComponent() -> impl IntoView {
-    let (items, set_items) = create_signal(vec![0, 1, 2]);
+    let (items, _) = create_signal(vec![0, 1, 2]);
     let render_prop = move || {
         let len = move || items.with(Vec::len);
-        view! {
-            <p>"Length: "{len}</p>
-        }
+        view! { <p>"Length: " {len}</p> }
     };
 
     view! {
@@ -15,7 +13,7 @@ pub fn PassingChildrenToComponent() -> impl IntoView {
             <p>"Here's a child."</p>
             <p>"Here's another child."</p>
         </TakesChildren>
-        <hr />
+        <hr/>
         <WrapsChildren>
             <p>"Here's a child."</p>
             <p>"Here's another child."</p>
@@ -29,7 +27,9 @@ where
     IV: IntoView,
 {
     view! {
-        <h1><code>"<TakesChildren/>"</code></h1>
+        <h1>
+            <code>"<TakesChildren/>"</code>
+        </h1>
         <h2>"Render Prop"</h2>
         {render_prop()}
 
@@ -43,10 +43,12 @@ fn WrapsChildren(children: Children) -> impl IntoView {
     let children = children()
         .nodes
         .into_iter()
-        .map(|child| view! {<li>{child}</li>})
+        .map(|child| view! { <li>{child}</li> })
         .collect_view();
     view! {
-        <h1><code>"<WrapsChildren/>"</code></h1>
+        <h1>
+            <code>"<WrapsChildren/>"</code>
+        </h1>
         <ul>{children}</ul>
     }
 }
