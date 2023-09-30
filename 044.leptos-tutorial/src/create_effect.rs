@@ -96,17 +96,10 @@ pub fn ManualVersion() -> impl IntoView {
     view! {
         <h1>"Manual Version"</h1>
         <form on:change=on_change>
+            <label>"First Name" <input type="text" name="fist" node_ref=first/></label>
+            <label>"Last Name" <input type="text" name="last" node_ref=last/></label>
             <label>
-                "First Name"
-                <input type="text" name="fist" node_ref=first/>
-            </label>
-            <label>
-                "Last Name"
-                <input type="text" name="last" node_ref=last/>
-            </label>
-            <label>
-                "Show Last Name"
-                <input type="checkbox" name="use_last" checked node_ref=use_last/>
+                "Show Last Name" <input type="checkbox" name="use_last" checked node_ref=use_last/>
             </label>
         </form>
     }
@@ -131,20 +124,18 @@ pub fn EffectVsDerivedSignal() -> impl IntoView {
         move || (!my_value.with(String::is_empty)).then(|| Some(my_value.get()));
 
     view! {
-        <input
-            prop:value=my_value
-            on:input= move |ev| set_my_value(event_target_value(&ev))
-        />
+        <input prop:value=my_value on:input=move |ev| set_my_value(event_target_value(&ev))/>
 
         <p>
             <code>"my_optional_value"</code>
             " is "
             <code>
-                <Show
-                    when=move || my_optional_value().is_some()
-                    fallback=|| view! { "None" }
-                >
-                    "Some(\"" {my_optional_value().unwrap()} "\")"
+                <Show when=move || my_optional_value().is_some() fallback=|| view! { "None" }>
+                    "Some("
+                    "
+                    {my_optional_value().unwrap()}
+                    "
+                    ")"
                 </Show>
             </code>
         </p>

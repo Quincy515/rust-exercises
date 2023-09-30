@@ -7,6 +7,7 @@ use crate::forms::{ControlledInputs, UncontrolledInputs};
 use crate::iteration::{DynamicList, StaticList, StaticView};
 use crate::parent_child_communication::Communicate;
 use crate::progress_bar::ProgressBar;
+use crate::study_create_resurce::StudyCreateResource;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -56,6 +57,8 @@ pub fn App() -> impl IntoView {
             <PassingChildrenToComponent/>
             <br/>
             <CreateAnEffect/>
+            <br/>
+            <StudyCreateResource/>
         </div>
     }
 }
