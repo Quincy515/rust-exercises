@@ -1,8 +1,8 @@
-mod progress_bar;
 pub mod app;
-mod iteration;
-mod forms;
-mod error_handling;
-mod parent_child_communication;
 mod component_children;
-mod create_effect;
+pub mod create_effect;
+mod error_handling;
+mod forms;
+mod iteration;
+mod parent_child_communication;
+mod progress_bar;
