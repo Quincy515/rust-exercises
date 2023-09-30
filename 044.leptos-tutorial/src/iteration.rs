@@ -49,7 +49,7 @@ pub fn DynamicList(initial_length: usize) -> impl IntoView {
                 <For
                     each=counters
                     key=|counter| counter.0
-                    view=move |(id, (count, set_count))| {
+                    children=move |(id, (count, set_count))| {
                         view! {
                             <li>
                                 <button

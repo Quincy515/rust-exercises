@@ -1,3 +1,4 @@
+use leptos::*;
 use leptos::{
     component, create_node_ref, create_signal, ev::SubmitEvent, event_target_value, html::Input,
     view, IntoView, NodeRef,

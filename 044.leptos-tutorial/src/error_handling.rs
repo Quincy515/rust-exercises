@@ -1,3 +1,4 @@
+use leptos::*;
 use leptos::{
     component, create_signal, event_target_value, view, CollectView, ErrorBoundary, IntoView,
     SignalGet,

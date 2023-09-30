@@ -1,6 +1,7 @@
 use leptos::*;
 
 use crate::component_children::PassingChildrenToComponent;
+use crate::create_effect::Effect;
 use crate::error_handling::{NumericInput, NumericInputErrorBoundary};
 use crate::forms::{ControlledInputs, UncontrolledInputs};
 use crate::iteration::{DynamicList, StaticList, StaticView};
@@ -53,6 +54,8 @@ pub fn App() -> impl IntoView {
             <Communicate/>
             <br/>
             <PassingChildrenToComponent/>
+            <br/>
+            <Effect/>
         </div>
     }
 }
