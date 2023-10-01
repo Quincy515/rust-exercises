@@ -9,6 +9,7 @@ use crate::parent_child_communication::Communicate;
 use crate::progress_bar::ProgressBar;
 use crate::study_create_resurce::StudyCreateResource;
 use crate::study_suspense::StudySuspense;
+use crate::study_transition::StudyTransition;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -62,6 +63,8 @@ pub fn App() -> impl IntoView {
             <StudyCreateResource/>
             <br/>
             <StudySuspense/>
+            <br/>
+            <StudyTransition/>
         </div>
     }
 }
