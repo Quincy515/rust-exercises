@@ -8,6 +8,7 @@ use crate::iteration::{DynamicList, StaticList, StaticView};
 use crate::parent_child_communication::Communicate;
 use crate::progress_bar::ProgressBar;
 use crate::study_create_resurce::StudyCreateResource;
+use crate::study_suspense::StudySuspense;
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -59,6 +60,8 @@ pub fn App() -> impl IntoView {
             <CreateAnEffect/>
             <br/>
             <StudyCreateResource/>
+            <br/>
+            <StudySuspense/>
         </div>
     }
 }

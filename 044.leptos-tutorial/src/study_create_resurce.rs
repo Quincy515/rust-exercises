@@ -54,6 +54,7 @@ pub fn StudyCreateResource() -> impl IntoView {
                 set_count.update(|n| *n += 1);
             }
         >
+
             "Click me count:"
             {count}
         </button>
