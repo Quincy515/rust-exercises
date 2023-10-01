@@ -18,3 +18,4 @@ wasm-bindgen = { version = "0.2" }
 console_log = { version = "1"}
 console_error_panic_hook = { version = "0.1"}
 gloo-timers = { version = "0.3.0", features = ["futures"] }
+uuid = { version = "1.4.1", features = ["v4"] }

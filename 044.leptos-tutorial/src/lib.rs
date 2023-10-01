@@ -9,3 +9,4 @@ mod progress_bar;
 mod study_create_resurce;
 mod study_suspense;
 mod study_transition;
+mod study_action;
