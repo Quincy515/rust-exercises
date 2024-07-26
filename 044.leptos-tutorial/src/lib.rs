@@ -1,3 +1,12 @@
-mod progress_bar;
 pub mod app;
+mod component_children;
+pub mod create_effect;
+mod error_handling;
+mod forms;
 mod iteration;
+mod parent_child_communication;
+mod progress_bar;
+mod study_create_resurce;
+mod study_suspense;
+mod study_transition;
+mod study_action;

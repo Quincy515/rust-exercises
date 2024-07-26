@@ -6,11 +6,7 @@ pub fn StaticView() -> impl IntoView {
 
     view! {
         <p>{values.clone()}</p>
-        <ul>
-            {values.into_iter()
-                .map(|n| view!{<li>{n}</li>})
-                .collect::<Vec<_>>()}
-        </ul>
+        <ul>{values.into_iter().map(|n| view! { <li>{n}</li> }).collect::<Vec<_>>()}</ul>
     }
 }
 
@@ -23,7 +19,7 @@ pub fn StaticList(length: usize) -> impl IntoView {
                 <li>
                     <button
                         class="btn btn-square btn-outline"
-                        on:click=move|_| set_count.update(|n| *n += 1)
+                        on:click=move |_| set_count.update(|n| *n += 1)
                     >
                         {count}
                     </button>
@@ -32,9 +28,7 @@ pub fn StaticList(length: usize) -> impl IntoView {
         })
         .collect::<Vec<_>>();
 
-    view! {
-        <ul>{counter_buttons}</ul>
-    }
+    view! { <ul>{counter_buttons}</ul> }
 }
 #[component]
 pub fn DynamicList(initial_length: usize) -> impl IntoView {
@@ -57,29 +51,45 @@ pub fn DynamicList(initial_length: usize) -> impl IntoView {
                 <For
                     each=counters
                     key=|counter| counter.0
-                    view = move|(id, (count, set_count))|{
-                        view!{
+                    children=move |(id, (count, set_count))| {
+                        view! {
                             <li>
                                 <button
                                     class="btn btn-square btn-outline"
-                                    on:click=move|_| set_count.update(|n| *n += 1)
+                                    on:click=move |_| set_count.update(|n| *n += 1)
                                 >
                                     {count}
                                 </button>
                                 <button
                                     class="btn btn-circle btn-outline"
-                                    on:click=move|_|{
-                                        set_counters.update(|counters|{
-                                            counters.retain(|(idx, _)| *idx != id);
-                                        })
+                                    on:click=move |_| {
+                                        set_counters
+                                            .update(|counters| {
+                                                counters.retain(|(idx, _)| *idx != id);
+                                            })
                                     }
                                 >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="h-6 w-6"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                        ></path>
+                                    </svg>
                                 </button>
                             </li>
                         }
                     }
                 />
+
             </ul>
         </div>
     }
