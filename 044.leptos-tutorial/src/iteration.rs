@@ -50,7 +50,7 @@ pub fn DynamicList(initial_length: usize) -> impl IntoView {
     };
     view! {
         <div>
-            <button on:click = add_counter>
+            <button class="btn btn-info" on:click = add_counter>
                 "Add counter"
             </button>
             <ul>
