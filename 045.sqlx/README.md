@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS users(
 首先添加 `.env` 文件然后执行 `sqlx migrate run` 进行数据库迁移
 
 ```.env
-DATABASE_URL=postgres://tianxiaoqiang@localhost/chat
+DATABASE_URL=postgres://postgres@localhost/chat
 ```
 
 ```shell
